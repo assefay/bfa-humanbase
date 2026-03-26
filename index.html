@@ -799,7 +799,7 @@ async function runQuery(){
       model:'claude-sonnet-4-20250514',max_tokens:1500,
       system:`Tu es un analyste humanitaire senior spécialisé sur le Burkina Faso pour OCHA. Données couvrent 2024-2026. Les données GCORR sont la SOURCE OFFICIELLE pour les déplacements. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan. Réponds en français sauf si question en anglais. Sois précis avec les chiffres.
 
-TABLE gcorr_alerts: clé unique=deplacement_id. COLONNES ARRIVÉE (destination): region_arrivee, commune_arrivee, commune_arrivee_pcode, date_arrivee. COLONNES ORIGINE (départ): origine_region, origine_province, origine_commune, origine_commune_pcode, zone_origine_raw. CHIFFRES: pdi_personnes, pdi_menages, hommes, femmes, garcons, filles. DATES: choc_date/choc_year=incident, date_arrivee=arrivée. IMPORTANT: toujours utiliser region_arrivee (jamais region_accueil) pour la région de destination.`,
+TABLE gcorr_alerts: clé unique=deplacement_id. COLONNES ARRIVÉE (destination): region_arrivee, commune_arrivee, commune_arrivee_pcode, date_arrivee. COLONNES ORIGINE (départ): origine_region, origine_province, origine_commune, origine_commune_pcode, zone_origine_raw. CHIFFRES: pdi_personnes, pdi_menages, hommes, femmes, garcons, filles. DATES: choc_date/choc_year=incident, date_arrivee=arrivée. IMPORTANT: toujours utiliser region_arrivee (jamais region_arrivee) pour la région de destination.`,
       messages:[{role:'user',content:`DONNÉES:\n${context}\n\nQUESTION: ${question}`}]
     })});
     const data=await resp.json();
