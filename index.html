@@ -437,8 +437,8 @@ async function loadDashboard() {
     // Incidents by region
     const incAll = await sb('incidents?select=region,adm1_pcode&limit=2000');
     const byReg = {};
-    incAll.forEach(r => { const k = shortReg(r.region); byReg[k] = (byReg[k]||0)+1; });
-    const regSorted = Object.entries(byReg).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    incAll.forEach(r => { (r.region||'?').split('/').forEach(p => { const k=p.trim(); byReg[k]=(byReg[k]||0)+1; }); });
+    const regSorted = Object.entries(byReg).sort((a,b)=>b[1]-a[1]);
     const maxReg = regSorted[0]?.[1]||1;
     document.getElementById('incByRegion').innerHTML = regSorted.map(([r,n])=>`
       <div class="bar-item"><div class="bar-row">
@@ -524,7 +524,7 @@ async function loadDashboard() {
   }
 }
 
-function shortReg(s){ if(!s) return '?'; const m = s.match(/\(ex-([^)]+)\)/); if(m) return m[1]; return s.split(' ')[0]; }
+function shortReg(s){ return s || '?'; }
 function shortType(s){ if(!s) return '?'; return s.length>18 ? s.substring(0,18)+'…' : s; }
 function fmtNum(n){ return n ? n.toLocaleString('fr-FR') : ''; }
 
