@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFA HumanBase</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink:#0F1923; --ink2:#243447; --ink3:#4A6070;
+  --un-blue:#026CB6; --un-light:#66B0EC; --un-pale:#EAF4FC;
+  --red:#D0312D; --red-pale:#FFF0F0;
+  --green:#2E7D32; --green-pale:#F0FFF0;
+  --amber:#E65100; --amber-pale:#FFF8F0;
+  --purple:#5B21B6; --purple-pale:#F3EAFF;
+  --teal:#00695C; --teal-pale:#E0F2F1;
+  --white:#FFFFFF; --off:#F7F9FC; --border:#E2E8F0;
+  --shadow:0 1px 3px rgba(15,25,35,.08),0 4px 16px rgba(15,25,35,.06);
+  --shadow-lg:0 8px 32px rgba(15,25,35,.12);
+  --r:8px; --rl:14px;
+  --fh:'DM Sans',sans-serif; --fm:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fh);background:var(--off);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;font-size:15px}
+header{background:var(--ink);height:56px;display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.logo-mark{width:4px;height:30px;background:var(--un-blue);border-radius:2px;flex-shrink:0}
+.logo-text{font-family:var(--fh);font-size:1rem;font-weight:700;color:white}
+.logo-text span{font-weight:300;color:var(--un-light);margin-left:6px;font-size:.85rem}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.db-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:4px 12px;font-size:.75rem;color:#94A3B8}
+.db-dot{width:6px;height:6px;border-radius:50%;background:#94A3B8;transition:background .3s}
+.db-dot.ok{background:#4CAF50} .db-dot.err{background:var(--red)} .db-dot.spin{background:var(--amber);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-tabs{background:var(--ink2);display:flex;padding:0 24px;gap:2px;overflow-x:auto}
+.tab-btn{font-family:var(--fh);font-size:.78rem;font-weight:600;color:#94A3B8;border:none;background:transparent;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.tab-btn:hover{color:var(--un-light)} .tab-btn.active{color:white;border-bottom-color:var(--un-blue)}
+.view{display:none;flex:1;overflow:auto} .view.active{display:flex;flex-direction:column}
+
+/* ── SHARED CARD STYLES ── */
+.card{background:var(--white);border-radius:var(--rl);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-size:.72rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .ct-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.kpi{background:var(--white);border-radius:var(--rl);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-val{font-family:var(--fm);font-size:1.8rem;font-weight:500;color:var(--ink);line-height:1}
+.kpi-lbl{font-size:.72rem;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+.kpi-sub{font-size:.7rem;color:var(--ink3);margin-top:3px}
+.bar-list{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-name{font-size:.75rem;color:var(--ink2);width:130px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:7px;background:var(--off);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bar-val{font-family:var(--fm);font-size:.72rem;color:var(--ink3);width:44px;text-align:right;flex-shrink:0}
+.recent-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto}
+.r-item{padding:9px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--off)}
+.r-item-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:3px}
+.r-badge{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;white-space:nowrap}
+.r-badge.inc{background:var(--red-pale);color:var(--red)} .r-badge.mov{background:var(--purple-pale);color:var(--purple)}
+.r-badge.resp{background:var(--green-pale);color:var(--green)} .r-badge.acc{background:var(--amber-pale);color:var(--amber)}
+.r-badge.high{background:var(--red-pale);color:var(--red)} .r-badge.medium{background:var(--amber-pale);color:var(--amber)}
+.r-badge.low{background:var(--green-pale);color:var(--green)}
+.r-title{font-size:.78rem;font-weight:600;color:var(--ink);line-height:1.3}
+.r-meta{font-size:.7rem;color:var(--ink3)}
+.skel{background:linear-gradient(90deg,var(--border) 25%,var(--off) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.tag-region{display:inline-block;padding:2px 8px;border-radius:9px;font-size:.65rem;font-weight:600;background:var(--un-pale);color:var(--un-blue)}
+.severity{display:inline-block;padding:2px 8px;border-radius:9px;font-size:.65rem;font-weight:700}
+.sev-high{background:var(--red-pale);color:var(--red)} .sev-med{background:var(--amber-pale);color:var(--amber)} .sev-low{background:var(--green-pale);color:var(--green)}
+.td-truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;display:block}
+.pagination{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--off)}
+.pg-btn{padding:5px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;font-family:var(--fh);font-weight:600;cursor:pointer;background:var(--white);color:var(--ink2);transition:all .15s}
+.pg-btn:hover{border-color:var(--un-blue);color:var(--un-blue)} .pg-btn.active{background:var(--un-blue);border-color:var(--un-blue);color:white} .pg-btn:disabled{opacity:.4;cursor:not-allowed}
+.pg-info{font-size:.75rem;color:var(--ink3);font-family:var(--fm);margin-left:auto}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:white;padding:11px 18px;border-radius:var(--rl);font-family:var(--fh);font-size:.8rem;font-weight:600;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:all .3s;z-index:1000}
+.toast.show{transform:translateY(0);opacity:1} .toast.ok{border-left:4px solid var(--green)} .toast.err{border-left:4px solid var(--red)}
+::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+
+/* ── DASHBOARD ── */
+#dash{padding:24px;gap:16px}
+.dash-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.dash-row{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+.dash-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.k-inc::before{background:var(--red)} .k-mov::before{background:var(--purple)}
+.k-resp::before{background:var(--green)} .k-acc::before{background:var(--amber)} .k-cmd::before{background:var(--un-blue)}
+
+/* ── NOUVEAUX DÉPLACEMENTS ── */
+#deplacements{padding:24px;gap:16px}
+.dep-header{background:linear-gradient(135deg,#00695C 0%,#004D40 100%);border-radius:var(--rl);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.dep-title{font-size:1rem;font-weight:700;color:white}
+.dep-sub{font-size:.82rem;color:rgba(255,255,255,.75);margin-top:2px}
+.dep-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dep-sel{padding:7px 12px;border-radius:var(--r);border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:white;font-family:var(--fh);font-size:.82rem;outline:none;cursor:pointer}
+.dep-sel option{color:var(--ink);background:white}
+.dep-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.dep-kpi{background:var(--white);border-radius:var(--rl);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);border-top:3px solid var(--teal)}
+.dep-kpi-val{font-family:var(--fm);font-size:1.7rem;font-weight:500;color:var(--teal);line-height:1}
+.dep-kpi-lbl{font-size:.72rem;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-top:4px}
+.dep-kpi-sub{font-size:.7rem;color:var(--ink3);margin-top:2px}
+.dep-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dep-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.chart-wrap{position:relative;height:260px}
+.chart-wrap-tall{position:relative;height:320px}
+.seg-bar{display:flex;height:28px;border-radius:var(--r);overflow:hidden;gap:2px;margin-top:8px}
+.seg-part{display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:white;min-width:20px;transition:flex .6s ease}
+.dep-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.dep-leg-item{display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--ink3)}
+.dep-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.year-badge{display:inline-block;padding:1px 8px;border-radius:8px;font-size:.68rem;font-weight:700;font-family:var(--fm)}
+.y2024{background:#FFF3E0;color:#E65100} .y2025{background:#E3F2FD;color:#1565C0} .y2026{background:#E8F5E9;color:#2E7D32}
+.alert-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.alert-table thead th{padding:9px 12px;text-align:left;font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;background:var(--off);border-bottom:1px solid var(--border);white-space:nowrap}
+.alert-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.alert-table tbody tr:hover{background:var(--off)}
+.alert-table tbody td{padding:8px 12px;color:var(--ink2);line-height:1.4;vertical-align:middle}
+.table-wrap{overflow-x:auto;max-height:400px;overflow-y:auto}
+
+/* ── EXPLORER ── */
+#explorer{padding:24px;gap:16px}
+.exp-toolbar{background:var(--white);border-radius:var(--rl);padding:14px 18px;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.exp-field{display:flex;flex-direction:column;gap:4px}
+.exp-lbl{font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.exp-sel,.exp-input{padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-family:var(--fh);font-size:.84rem;color:var(--ink);background:var(--off);outline:none}
+.exp-sel:focus,.exp-input:focus{border-color:var(--un-blue);background:var(--white)}
+.btn-search{padding:9px 20px;background:var(--un-blue);color:white;border:none;border-radius:var(--r);font-family:var(--fh);font-weight:700;font-size:.82rem;cursor:pointer}
+.btn-search:hover{background:#0381d9} .btn-search:disabled{background:var(--border);cursor:not-allowed}
+.exp-results{background:var(--white);border-radius:var(--rl);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.exp-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--off)}
+.exp-count{font-family:var(--fm);font-size:.78rem;color:var(--ink3)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead th{padding:10px 14px;text-align:left;font-family:var(--fh);font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;background:var(--off);border-bottom:1px solid var(--border);position:sticky;top:0;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border)} tbody tr:hover{background:var(--off)}
+tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;max-width:300px}
+
+/* ── QUERY ── */
+#query{padding:24px;gap:16px}
+.q-hero{background:linear-gradient(135deg,var(--ink) 0%,#0a3a6b 100%);border-radius:var(--rl);padding:24px 28px;overflow:hidden}
+.q-title{font-size:1rem;font-weight:700;color:white;margin-bottom:3px}
+.q-sub{font-size:.83rem;color:var(--un-light);margin-bottom:16px;line-height:1.5}
+.qbar{display:flex;gap:10px}
+.q-input{flex:1;padding:12px 16px;border-radius:var(--r);border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.1);color:white;font-family:var(--fh);font-size:.92rem;outline:none}
+.q-input::placeholder{color:rgba(255,255,255,.4)} .q-input:focus{border-color:var(--un-light)}
+.btn-q{padding:12px 22px;background:var(--un-blue);color:white;border:none;border-radius:var(--r);font-family:var(--fh);font-weight:700;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.btn-q:hover:not(:disabled){background:#0381d9} .btn-q:disabled{background:#4A6070;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.chip{font-size:.73rem;padding:4px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:18px;color:rgba(255,255,255,.8);cursor:pointer}
+.chip:hover{background:rgba(255,255,255,.2);color:white}
+.rep-bar{background:var(--white);border-radius:var(--rl);padding:14px 18px;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.rep-field{display:flex;flex-direction:column;gap:4px}
+.rep-lbl{font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.rep-sel{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-family:var(--fh);font-size:.84rem;color:var(--ink);background:var(--off);outline:none}
+.btn-rep{padding:9px 20px;background:var(--ink);color:white;border:none;border-radius:var(--r);font-family:var(--fh);font-weight:700;font-size:.82rem;cursor:pointer}
+.btn-rep:hover:not(:disabled){background:var(--un-blue)} .btn-rep:disabled{background:var(--border);cursor:not-allowed}
+#results{display:flex;flex-direction:column;gap:14px}
+.res-card{background:var(--white);border-radius:var(--rl);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.res-meta{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.res-icon{width:32px;height:32px;background:var(--un-pale);border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.res-title{font-size:.88rem;font-weight:700;color:var(--ink)}
+.res-time{font-size:.7rem;color:var(--ink3);margin-top:1px}
+.res-body{font-size:.88rem;line-height:1.8;color:var(--ink2);white-space:pre-wrap}
+.btn-copy{margin-left:auto;background:var(--off);border:1px solid var(--border);padding:5px 13px;border-radius:6px;cursor:pointer;font-family:var(--fh);font-size:.72rem;font-weight:700;color:var(--ink3)}
+.btn-print{background:var(--un-blue);border:none;padding:5px 13px;border-radius:6px;cursor:pointer;font-family:var(--fh);font-size:.72rem;font-weight:700;color:white}
+.dots{display:flex;gap:6px;padding:16px 0;align-items:center}
+.dots span{width:7px;height:7px;background:var(--un-blue);border-radius:50%;animation:bounce 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+.empty{text-align:center;padding:48px 20px;color:var(--ink3)}
+.empty-icon{font-size:2.5rem;margin-bottom:10px;opacity:.5}
+.empty-t{font-weight:700;font-size:.95rem;color:var(--ink2);margin-bottom:5px}
+.empty-s{font-size:.82rem;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-mark"></div>
+  <div class="logo-text">BFA HumanBase <span>Burkina Faso — Base humanitaire OCHA</span></div>
+  <div class="header-right">
+    <div class="db-pill"><div class="db-dot spin" id="dot"></div><span id="statusTxt">Connexion...</span></div>
+  </div>
+</header>
+<nav class="nav-tabs">
+  <button class="tab-btn active"   onclick="showTab('dash')">📊 Tableau de bord</button>
+  <button class="tab-btn"          onclick="showTab('deplacements')">🔴 Nouveaux Déplacements</button>
+  <button class="tab-btn"          onclick="showTab('explorer')">🔍 Explorateur</button>
+  <button class="tab-btn"          onclick="showTab('query')">🤖 Analyse IA</button>
+</nav>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div class="view active" id="dash" style="flex-direction:column">
+  <div style="padding:24px 24px 0"><div class="dash-grid5" id="kpiRow">
+    <div class="kpi k-inc"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Incidents</div><div class="kpi-sub">sécurité & protection</div></div>
+    <div class="kpi k-mov"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Alertes PDI</div><div class="kpi-sub">GCORR officielles</div></div>
+    <div class="kpi k-resp"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Réponse</div><div class="kpi-sub">activités humanitaires</div></div>
+    <div class="kpi k-acc"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Accès</div><div class="kpi-sub">entraves & convois</div></div>
+    <div class="kpi k-cmd"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">CMCoord</div><div class="kpi-sub">coord. civilo-militaire</div></div>
+  </div></div>
+  <div style="padding:16px 24px 0" class="dash-row">
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--red)"></div>Incidents par région</div><div class="bar-list" id="incByRegion"><div class="skel" style="height:120px"></div></div></div>
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--purple)"></div>Types d'incidents</div><div class="bar-list" id="incByType"><div class="skel" style="height:120px"></div></div></div>
+  </div>
+  <div style="padding:16px 24px 0" class="dash-row">
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--un-blue)"></div>Incidents récents</div><div class="recent-list" id="recentInc"><div class="skel" style="height:80px"></div></div></div>
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--green)"></div>Acteurs humanitaires actifs</div><div class="bar-list" id="topActors"><div class="skel" style="height:120px"></div></div></div>
+  </div>
+  <div style="padding:16px 24px 24px" class="dash-row3">
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--teal)"></div>Alertes PDI récentes <span style="font-size:.6rem;background:var(--teal-pale);color:var(--teal);padding:1px 6px;border-radius:6px;margin-left:4px">GCORR</span></div><div class="recent-list" id="recentDep"><div class="skel" style="height:80px"></div></div></div>
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--amber)"></div>Accès humanitaire</div><div class="recent-list" id="recentAcc"><div class="skel" style="height:80px"></div></div></div>
+    <div class="card"><div class="card-title"><div class="ct-dot" style="background:var(--green)"></div>Réponse récente</div><div class="recent-list" id="recentResp"><div class="skel" style="height:80px"></div></div></div>
+  </div>
+</div>
+
+<!-- ══════════════ NOUVEAUX DÉPLACEMENTS ══════════════ -->
+<div class="view" id="deplacements" style="flex-direction:column">
+  <!-- Header with filters -->
+  <div style="padding:24px 24px 0">
+    <div class="dep-header">
+      <div>
+        <div class="dep-title">🔴 Nouveaux Déplacements — GCORR Burkina Faso</div>
+        <div class="dep-sub">Données officielles GCORR · <span id="depSource">gcorr_nouveaux_deplacements</span></div>
+      </div>
+      <div class="dep-filters">
+        <select class="dep-sel" id="depYear" onchange="loadDeplacements()">
+          <option value="all">Toutes les années</option>
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+        </select>
+        <select class="dep-sel" id="depRegion" onchange="loadDeplacements()">
+          <option value="all">Toutes les régions</option>
+          <option>Liptako</option><option>Soum</option><option>Yaadga</option>
+          <option>Bankui</option><option>Sourou</option><option>Koulsé</option>
+          <option>Goulmou</option><option>Sirba</option><option>Tapoa</option>
+          <option>Nakambé</option><option>Djoro</option><option>Guiriko</option><option>Tannouyan</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div style="padding:16px 24px 0"><div class="dep-kpis" id="depKpis">
+    <div class="dep-kpi"><div class="dep-kpi-val skel" style="width:80px;height:32px"></div><div class="dep-kpi-lbl">Personnes déplacées</div><div class="dep-kpi-sub">total période</div></div>
+    <div class="dep-kpi"><div class="dep-kpi-val skel" style="width:60px;height:32px"></div><div class="dep-kpi-lbl">Ménages déplacés</div><div class="dep-kpi-sub">total période</div></div>
+    <div class="dep-kpi"><div class="dep-kpi-val skel" style="width:40px;height:32px"></div><div class="dep-kpi-lbl">Alertes GCORR</div><div class="dep-kpi-sub">événements enregistrés</div></div>
+    <div class="dep-kpi"><div class="dep-kpi-val skel" style="width:40px;height:32px"></div><div class="dep-kpi-lbl">Régions affectées</div><div class="dep-kpi-sub">destinations PDI</div></div>
+  </div></div>
+
+  <!-- Charts row 1: monthly comparison + by region -->
+  <div style="padding:16px 24px 0" class="dep-grid2">
+    <div class="card">
+      <div class="card-title"><div class="ct-dot" style="background:var(--teal)"></div>Personnes déplacées par mois <span style="margin-left:auto;display:flex;gap:6px"><span class="year-badge y2024">2024</span><span class="year-badge y2025">2025</span><span class="year-badge y2026">2026</span></span></div>
+      <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="ct-dot" style="background:var(--un-blue)"></div>Déplacements par région (personnes)</div>
+      <div class="chart-wrap"><canvas id="chartRegion"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 2: year comparison bar + severity + gender -->
+  <div style="padding:16px 24px 0" class="dep-grid3">
+    <div class="card">
+      <div class="card-title"><div class="ct-dot" style="background:var(--amber)"></div>Comparaison annuelle</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="chartYears"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="ct-dot" style="background:var(--red)"></div>Sévérité des alertes</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="chartSev"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="ct-dot" style="background:var(--purple)"></div>Profil des déplacés</div>
+      <div id="genderBreakdown" style="padding-top:8px"><div class="skel" style="height:60px"></div></div>
+    </div>
+  </div>
+
+  <!-- Recent alerts table -->
+  <div style="padding:16px 24px 24px">
+    <div class="card" style="padding:0">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--off);border-radius:var(--rl) var(--rl) 0 0">
+        <div class="card-title" style="margin-bottom:0"><div class="ct-dot" style="background:var(--teal)"></div>Alertes récentes</div>
+        <span class="exp-count" id="depAlertCount" style="margin-left:auto"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="alert-table">
+          <thead><tr>
+            <th>Date choc</th><th>Région accueil</th><th>Zone origine</th>
+            <th>Personnes</th><th>Ménages</th><th>Sévérité</th><th>Description</th>
+          </tr></thead>
+          <tbody id="depTable"><tr><td colspan="7" style="padding:32px;text-align:center;color:var(--ink3)">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="depPagination" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ EXPLORER ══════════════ -->
+<div class="view" id="explorer" style="flex-direction:column">
+  <div class="exp-toolbar" style="margin:24px 24px 0">
+    <div class="exp-field"><div class="exp-lbl">Table</div>
+      <select class="exp-sel" id="expTable" onchange="resetExplorer()">
+        <option value="incidents">Incidents sécuritaires</option>
+        <option value="gcorr_alerts">GCORR — Nouveaux déplacements</option>
+        <option value="pop_movement_reported_ocha_field">Mouvements terrain (OCHA)</option>
+        <option value="humanitarian_response">Réponse humanitaire</option>
+        <option value="access">Accès humanitaire</option>
+        <option value="cmcoord">CMCoord</option>
+      </select>
+    </div>
+    <div class="exp-field"><div class="exp-lbl">Région</div>
+      <select class="exp-sel" id="expRegion">
+        <option value="">Toutes</option>
+        <option>Liptako</option><option>Soum</option><option>Yaadga</option>
+        <option>Bankui</option><option>Sourou</option><option>Koulsé</option>
+        <option>Goulmou</option><option>Sirba</option><option>Tapoa</option>
+        <option>Nakambé</option><option>Djoro</option><option>Guiriko</option><option>Tannouyan</option>
+      </select>
+    </div>
+    <div class="exp-field"><div class="exp-lbl">Période / Année</div>
+      <select class="exp-sel" id="expPeriod">
+        <option value="">Toutes</option>
+        <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
+      </select>
+    </div>
+    <div class="exp-field"><div class="exp-lbl">Rechercher</div>
+      <input class="exp-input" id="expSearch" placeholder="Mot-clé..." style="width:180px" onkeydown="if(event.key==='Enter')runExplorer()">
+    </div>
+    <button class="btn-search" id="expBtn" onclick="runExplorer()">Rechercher</button>
+    <button class="btn-search" style="background:var(--off);color:var(--ink3);border:1.5px solid var(--border)" onclick="resetExplorer()">↺ Reset</button>
+  </div>
+  <div class="exp-results" style="margin:12px 24px 24px">
+    <div class="exp-header">
+      <span class="exp-count" id="expCount">Chargement...</span>
+      <span style="font-size:.72rem;color:var(--ink3);margin-left:8px" id="expNote"></span>
+    </div>
+    <div class="table-wrap" style="max-height:520px">
+      <table><thead id="expHead"></thead>
+        <tbody id="expBody"><tr><td colspan="10" style="padding:32px;text-align:center;color:var(--ink3)">Sélectionnez une table et cliquez Rechercher</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="expPagination" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ══════════════ QUERY / AI ══════════════ -->
+<div class="view" id="query" style="flex-direction:column">
+  <div style="padding:24px 24px 0">
+    <div class="q-hero">
+      <div class="q-title">Analyse IA — Base de données structurée</div>
+      <div class="q-sub">Posez vos questions. Claude interroge incidents, déplacements GCORR, réponse, accès et CMCoord.</div>
+      <div class="qbar">
+        <input class="q-input" id="qInput" placeholder="Ex: Combien de personnes déplacées en 2025 ? Quelles régions les plus affectées ?" onkeydown="if(event.key==='Enter')runQuery()">
+        <button class="btn-q" id="qBtn" onclick="runQuery()">Analyser →</button>
+      </div>
+      <div class="chips">
+        <div class="chip" onclick="sq('Résume la situation sécuritaire au Burkina Faso')">Situation sécuritaire</div>
+        <div class="chip" onclick="sq('Quelles régions ont le plus de déplacements selon les données GCORR ? Donne des chiffres')">Déplacements par région</div>
+        <div class="chip" onclick="sq('Compare les déplacements 2024 vs 2025 par région')">Comparaison 2024-2025</div>
+        <div class="chip" onclick="sq('Quelles sont les principales contraintes d\'accès humanitaire ?')">Accès humanitaire</div>
+        <div class="chip" onclick="sq('Quels acteurs humanitaires sont les plus actifs et dans quels secteurs ?')">Acteurs & réponse</div>
+        <div class="chip" onclick="sq('Génère un rapport mensuel OCHA prêt à publier')">Rapport mensuel</div>
+      </div>
+    </div>
+  </div>
+  <div class="rep-bar" style="margin:12px 24px 0">
+    <div class="rep-field"><div class="rep-lbl">Type de rapport</div>
+      <select class="rep-sel" id="rType">
+        <option value="weekly">Synthèse hebdomadaire</option>
+        <option value="monthly">Narrative mensuelle OCHA</option>
+        <option value="sitrep">SitRep complet</option>
+        <option value="security">Rapport sécurité</option>
+        <option value="displacement">Rapport déplacement</option>
+        <option value="donor">Résumé donateur</option>
+      </select>
+    </div>
+    <div class="rep-field"><div class="rep-lbl">Région</div>
+      <select class="rep-sel" id="rRegion">
+        <option value="all">Toutes</option>
+        <option>Liptako / Soum</option><option>Yaadga</option>
+        <option>Bankui / Sourou</option><option>Koulsé</option>
+        <option>Goulmou / Sirba / Tapoa</option><option>Nakambé</option>
+      </select>
+    </div>
+    <div class="rep-field"><div class="rep-lbl">Période</div>
+      <select class="rep-sel" id="rPeriod">
+        <option>Dernière semaine</option><option>Dernier mois</option>
+        <option>Dernier trimestre</option><option>2025</option><option>2024</option>
+      </select>
+    </div>
+    <div class="rep-field"><div class="rep-lbl">Langue</div>
+      <select class="rep-sel" id="rLang"><option value="fr">Français</option><option value="en">English</option></select>
+    </div>
+    <button class="btn-rep" id="repBtn" onclick="generateReport()">📄 Générer</button>
+  </div>
+  <div id="results" style="padding:12px 24px 24px;display:flex;flex-direction:column;gap:14px">
+    <div class="empty"><div class="empty-icon">💬</div><div class="empty-t">Posez votre première question</div><div class="empty-s">Claude analyse incidents, déplacements GCORR, réponse, accès et CMCoord.</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB='https://vshnatreclfntadwcyhy.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
+const PROXY='https://divine-fire-c996bfa-humanbase-proxy.assefay.workers.dev';
+const H={'apikey':KEY,'Authorization':'Bearer '+KEY};
+
+const MONTHS_FR=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const Y_COLORS={2024:'#E65100',2025:'#1565C0',2026:'#2E7D32'};
+const Y_BG={2024:'rgba(230,81,0,.15)',2025:'rgba(21,101,192,.15)',2026:'rgba(46,125,50,.15)'};
+
+function sb(path){return fetch(`${SB}/rest/v1/${path}`,{headers:H}).then(r=>r.json());}
+function sbCount(table,filter=''){
+  return fetch(`${SB}/rest/v1/${table}?select=id${filter}&limit=1`,{headers:{...H,'Prefer':'count=exact','Range':'0-0'}})
+    .then(r=>{const c=r.headers.get('content-range');return c?parseInt(c.split('/')[1]):0;});
+}
+function showTab(id){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['dash','deplacements','explorer','query'][i]===id));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='dash'&&!window._dashLoaded)loadDashboard();
+  if(id==='deplacements'&&!window._depLoaded)loadDeplacements();
+  if(id==='explorer'&&!window._expInit)initExplorer();
+}
+function setStatus(s,t){document.getElementById('dot').className='db-dot '+s;document.getElementById('statusTxt').textContent=t;}
+function shortReg(s){return s||'?';}
+function shortType(s){if(!s)return '?';return s.length>20?s.substring(0,20)+'…':s;}
+function fmtNum(n){return n?Math.round(n).toLocaleString('fr-FR'):'';}
+function fmtK(n){if(!n)return '0';if(n>=1000)return (n/1000).toFixed(1)+'k';return String(n);}
+function destroyChart(id){if(window._charts&&window._charts[id]){window._charts[id].destroy();delete window._charts[id];}}
+function saveChart(id,chart){if(!window._charts)window._charts={};window._charts[id]=chart;}
+
+// ══ DASHBOARD ══════════════════════════════════════════
+async function loadDashboard(){
+  window._dashLoaded=true;
+  setStatus('spin','Chargement...');
+  try{
+    const[nInc,nDep,nResp,nAcc,nCmd]=await Promise.all([
+      sbCount('incidents'),sbCount('gcorr_alerts'),
+      sbCount('humanitarian_response'),sbCount('access'),sbCount('cmcoord')
+    ]);
+    document.getElementById('kpiRow').innerHTML=`
+      <div class="kpi k-inc"><div class="kpi-val">${nInc}</div><div class="kpi-lbl">Incidents</div><div class="kpi-sub">sécurité & protection</div></div>
+      <div class="kpi k-mov"><div class="kpi-val">${nDep}</div><div class="kpi-lbl">Alertes PDI</div><div class="kpi-sub">GCORR officielles</div></div>
+      <div class="kpi k-resp"><div class="kpi-val">${nResp}</div><div class="kpi-lbl">Réponse</div><div class="kpi-sub">activités humanitaires</div></div>
+      <div class="kpi k-acc"><div class="kpi-val">${nAcc}</div><div class="kpi-lbl">Accès</div><div class="kpi-sub">entraves & convois</div></div>
+      <div class="kpi k-cmd"><div class="kpi-val">${nCmd}</div><div class="kpi-lbl">CMCoord</div><div class="kpi-sub">coord. civilo-militaire</div></div>`;
+    setStatus('ok',`${nInc+nDep+nResp+nAcc+nCmd} enregistrements`);
+
+    // Incidents by region
+    const incAll=await sb('incidents?select=region&limit=2000');
+    const byReg={};
+    incAll.forEach(r=>(r.region||'?').split('/').forEach(p=>{const k=p.trim();byReg[k]=(byReg[k]||0)+1;}));
+    const regS=Object.entries(byReg).sort((a,b)=>b[1]-a[1]);
+    const maxR=regS[0]?.[1]||1;
+    document.getElementById('incByRegion').innerHTML=regS.map(([r,n])=>`<div class="bar-row"><span class="bar-name">${r}</span><div class="bar-track"><div class="bar-fill" style="width:${n/maxR*100}%;background:var(--red)"></div></div><span class="bar-val">${n}</span></div>`).join('');
+
+    // Incident types
+    const byType={};
+    incAll.forEach&&(await sb('incidents?select=incident_type&limit=2000')).forEach(r=>{const k=shortType(r.incident_type);byType[k]=(byType[k]||0)+1;});
+    const typeS=Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxT=typeS[0]?.[1]||1;
+    const tc=['#7C3AED','#5B21B6','#6D28D9','#8B5CF6','#A78BFA','#C4B5FD','#DDD6FE','#EDE9FE'];
+    document.getElementById('incByType').innerHTML=typeS.map(([t,n],i)=>`<div class="bar-row"><span class="bar-name">${t}</span><div class="bar-track"><div class="bar-fill" style="width:${n/maxT*100}%;background:${tc[i%tc.length]}"></div></div><span class="bar-val">${n}</span></div>`).join('');
+
+    // Recent incidents
+    const rInc=await sb('incidents?select=report_period,region,incident_type,description,killed_civilians&order=id.desc&limit=7');
+    document.getElementById('recentInc').innerHTML=rInc.map(r=>`<div class="r-item"><div class="r-item-top"><span class="r-badge inc">${shortType(r.incident_type)}</span><span class="r-title">${(r.description||'').substring(0,75)}${(r.description||'').length>75?'...':''}</span></div><div class="r-meta">${r.region} · ${r.report_period||''}${r.killed_civilians?' · <b style="color:var(--red)">'+r.killed_civilians+' tués</b>':''}</div></div>`).join('');
+
+    // Top actors
+    const respAll=await sb('humanitarian_response?select=actor&limit=2000');
+    const byActor={};
+    respAll.forEach(r=>{if(r.actor)byActor[r.actor]=(byActor[r.actor]||0)+1;});
+    const actS=Object.entries(byActor).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxA=actS[0]?.[1]||1;
+    document.getElementById('topActors').innerHTML=actS.map(([a,n])=>`<div class="bar-row"><span class="bar-name">${a}</span><div class="bar-track"><div class="bar-fill" style="width:${n/maxA*100}%;background:var(--green)"></div></div><span class="bar-val">${n}</span></div>`).join('');
+
+    // Recent GCORR alerts
+    const rDep=await sb('gcorr_alerts?select=choc_date,choc_year,region_accueil,zone_origine,pdi_personnes,pdi_menages,severite&order=choc_date.desc&limit=6');
+    document.getElementById('recentDep').innerHTML=rDep.map(r=>`<div class="r-item"><div class="r-item-top"><span class="r-badge ${(r.severite||'').toLowerCase()}">${r.severite||'?'}</span><span class="r-title">${r.zone_origine||'?'} → ${r.region_accueil||'?'}</span></div><div class="r-meta">${r.choc_date||''} · ${r.pdi_personnes?fmtNum(r.pdi_personnes)+' pers.':''} ${r.pdi_menages?'/ '+r.pdi_menages+' mén.':''}</div></div>`).join('');
+
+    // Recent access
+    const rAcc=await sb('access?select=report_period,region,location,status&order=id.desc&limit=6');
+    document.getElementById('recentAcc').innerHTML=rAcc.map(r=>`<div class="r-item"><div class="r-item-top"><span class="r-badge acc">${(r.status||'').substring(0,14)}</span><span class="r-title">${r.location||''}</span></div><div class="r-meta">${r.region} · ${r.report_period||''}</div></div>`).join('');
+
+    // Recent response
+    const rResp=await sb('humanitarian_response?select=report_period,region,actor,sector&order=id.desc&limit=6');
+    document.getElementById('recentResp').innerHTML=rResp.map(r=>`<div class="r-item"><div class="r-item-top"><span class="r-badge resp">${r.sector||'Réponse'}</span><span class="r-title">${r.actor||''}</span></div><div class="r-meta">${r.region} · ${r.report_period||''}</div></div>`).join('');
+
+  }catch(e){setStatus('err','Erreur');toast('Erreur: '+e.message,'err');}
+}
+
+// ══ NOUVEAUX DÉPLACEMENTS ══════════════════════════════
+let depPage=0, depTotal=0;
+const DEP_PAGE=20;
+
+async function loadDeplacements(){
+  window._depLoaded=true;
+  depPage=0;
+  const year=document.getElementById('depYear').value;
+  const region=document.getElementById('depRegion').value;
+
+  let filter='';
+  if(year!=='all') filter+=`&choc_year=eq.${year}`;
+  if(region!=='all') filter+=`&region_accueil=eq.${encodeURIComponent(region)}`;
+
+  try{
+    // Fetch all for charts
+    const all=await sb(`gcorr_alerts?select=choc_year,choc_month,region_accueil,pdi_personnes,pdi_menages,severite,hommes,femmes,garcons,filles&limit=1000${filter}`);
+
+    // KPIs
+    const totPersons=all.reduce((s,r)=>s+(r.pdi_personnes||0),0);
+    const totMenages=all.reduce((s,r)=>s+(r.pdi_menages||0),0);
+    const regions=new Set(all.map(r=>r.region_accueil).filter(Boolean));
+    document.getElementById('depKpis').innerHTML=`
+      <div class="dep-kpi"><div class="dep-kpi-val">${fmtNum(totPersons)}</div><div class="dep-kpi-lbl">Personnes déplacées</div><div class="dep-kpi-sub">${year!=='all'?year:'toutes années'}</div></div>
+      <div class="dep-kpi"><div class="dep-kpi-val">${fmtNum(totMenages)}</div><div class="dep-kpi-lbl">Ménages déplacés</div><div class="dep-kpi-sub">${year!=='all'?year:'toutes années'}</div></div>
+      <div class="dep-kpi"><div class="dep-kpi-val">${all.length}</div><div class="dep-kpi-lbl">Alertes GCORR</div><div class="dep-kpi-sub">événements enregistrés</div></div>
+      <div class="dep-kpi"><div class="dep-kpi-val">${regions.size}</div><div class="dep-kpi-lbl">Régions affectées</div><div class="dep-kpi-sub">destinations PDI</div></div>`;
+
+    // Monthly chart — one line per year
+    buildMonthlyChart(all, year);
+
+    // Region chart
+    buildRegionChart(all);
+
+    // Year comparison
+    buildYearChart(all);
+
+    // Severity chart
+    buildSevChart(all);
+
+    // Gender breakdown
+    buildGender(all);
+
+    // Table
+    await loadDepTable(filter);
+
+  }catch(e){toast('Erreur déplacements: '+e.message,'err');}
+}
+
+function buildMonthlyChart(all, yearFilter){
+  destroyChart('monthly');
+  // Group by year+month
+  const data={};
+  const years=yearFilter==='all'?[2024,2025,2026]:[parseInt(yearFilter)];
+  years.forEach(y=>{data[y]=Array(12).fill(0);});
+  all.forEach(r=>{
+    const y=r.choc_year, m=r.choc_month-1;
+    if(data[y]!==undefined) data[y][m]+=(r.pdi_personnes||0);
+  });
+  const datasets=years.map(y=>({
+    label:String(y),
+    data:data[y],
+    borderColor:Y_COLORS[y],
+    backgroundColor:Y_BG[y],
+    borderWidth:2,
+    pointRadius:3,
+    tension:.3,
+    fill:false
+  }));
+  const ctx=document.getElementById('chartMonthly').getContext('2d');
+  saveChart('monthly',new Chart(ctx,{
+    type:'line',
+    data:{labels:MONTHS_FR,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtK(v),font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{size:10}},grid:{display:false}}}
+    }
+  }));
+}
+
+function buildRegionChart(all){
+  destroyChart('region');
+  const byReg={};
+  all.forEach(r=>{const k=r.region_accueil||'?';byReg[k]=(byReg[k]||0)+(r.pdi_personnes||0);});
+  const sorted=Object.entries(byReg).sort((a,b)=>b[1]-a[1]);
+  const ctx=document.getElementById('chartRegion').getContext('2d');
+  saveChart('region',new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:sorted.map(([r])=>r),
+      datasets:[{label:'Personnes déplacées',data:sorted.map(([,n])=>n),backgroundColor:'rgba(2,108,182,.7)',borderColor:'rgba(2,108,182,1)',borderWidth:1,borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{callback:v=>fmtK(v),font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},y:{ticks:{font:{size:10}},grid:{display:false}}}
+    }
+  }));
+}
+
+function buildYearChart(all){
+  destroyChart('years');
+  const byYear={2024:{p:0,m:0},2025:{p:0,m:0},2026:{p:0,m:0}};
+  all.forEach(r=>{if(byYear[r.choc_year]){byYear[r.choc_year].p+=(r.pdi_personnes||0);byYear[r.choc_year].m+=(r.pdi_menages||0);}});
+  const ctx=document.getElementById('chartYears').getContext('2d');
+  saveChart('years',new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['2024','2025','2026'],
+      datasets:[
+        {label:'Personnes',data:[byYear[2024].p,byYear[2025].p,byYear[2026].p],backgroundColor:[Y_COLORS[2024],Y_COLORS[2025],Y_COLORS[2026]].map(c=>c+'CC'),borderColor:[Y_COLORS[2024],Y_COLORS[2025],Y_COLORS[2026]],borderWidth:2,borderRadius:6}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fmtNum(ctx.raw)} personnes`}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtK(v),font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{font:{size:11,weight:'600'}},grid:{display:false}}}
+    }
+  }));
+}
+
+function buildSevChart(all){
+  destroyChart('sev');
+  const bySev={High:0,Medium:0,Low:0};
+  all.forEach(r=>{if(bySev[r.severite]!==undefined)bySev[r.severite]++;});
+  const ctx=document.getElementById('chartSev').getContext('2d');
+  saveChart('sev',new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Haute','Moyenne','Basse'],
+      datasets:[{data:[bySev.High,bySev.Medium,bySev.Low],backgroundColor:['#D0312D','#E65100','#2E7D32'],borderWidth:2,borderColor:'white'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:8}}}
+    }
+  }));
+}
+
+function buildGender(all){
+  const tot={h:0,f:0,g:0,fi:0};
+  all.forEach(r=>{tot.h+=(r.hommes||0);tot.f+=(r.femmes||0);tot.g+=(r.garcons||0);tot.fi+=(r.filles||0);});
+  const grand=tot.h+tot.f+tot.g+tot.fi||1;
+  const pct=v=>Math.round(v/grand*100);
+  document.getElementById('genderBreakdown').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="text-align:center"><div style="font-family:var(--fm);font-size:1.3rem;font-weight:500;color:#1565C0">${fmtNum(tot.h)}</div><div style="font-size:.68rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Hommes</div></div>
+      <div style="text-align:center"><div style="font-family:var(--fm);font-size:1.3rem;font-weight:500;color:#AD1457">${fmtNum(tot.f)}</div><div style="font-size:.68rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Femmes</div></div>
+      <div style="text-align:center"><div style="font-family:var(--fm);font-size:1.3rem;font-weight:500;color:#0277BD">${fmtNum(tot.g)}</div><div style="font-size:.68rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Garçons</div></div>
+      <div style="text-align:center"><div style="font-family:var(--fm);font-size:1.3rem;font-weight:500;color:#C2185B">${fmtNum(tot.fi)}</div><div style="font-size:.68rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em">Filles</div></div>
+    </div>
+    <div class="seg-bar">
+      <div class="seg-part" style="flex:${tot.h};background:#1565C0" title="Hommes ${pct(tot.h)}%">${pct(tot.h)>8?pct(tot.h)+'%':''}</div>
+      <div class="seg-part" style="flex:${tot.f};background:#AD1457" title="Femmes ${pct(tot.f)}%">${pct(tot.f)>8?pct(tot.f)+'%':''}</div>
+      <div class="seg-part" style="flex:${tot.g};background:#0277BD" title="Garçons ${pct(tot.g)}%">${pct(tot.g)>8?pct(tot.g)+'%':''}</div>
+      <div class="seg-part" style="flex:${tot.fi};background:#C2185B" title="Filles ${pct(tot.fi)}%">${pct(tot.fi)>8?pct(tot.fi)+'%':''}</div>
+    </div>
+    <div class="dep-legend">
+      <div class="dep-leg-item"><div class="dep-leg-dot" style="background:#1565C0"></div>Hommes ${pct(tot.h)}%</div>
+      <div class="dep-leg-item"><div class="dep-leg-dot" style="background:#AD1457"></div>Femmes ${pct(tot.f)}%</div>
+      <div class="dep-leg-item"><div class="dep-leg-dot" style="background:#0277BD"></div>Garçons ${pct(tot.g)}%</div>
+      <div class="dep-leg-item"><div class="dep-leg-dot" style="background:#C2185B"></div>Filles ${pct(tot.fi)}%</div>
+    </div>`;
+}
+
+async function loadDepTable(filter, page){
+  if(page!==undefined) depPage=page;
+  const from=depPage*DEP_PAGE, to=from+DEP_PAGE-1;
+  const countResp=await fetch(`${SB}/rest/v1/gcorr_alerts?select=id${filter}`,{headers:{...H,'Prefer':'count=exact','Range':'0-0'}});
+  const cr=countResp.headers.get('content-range');
+  depTotal=cr?parseInt(cr.split('/')[1]):0;
+  document.getElementById('depAlertCount').textContent=`${depTotal} alertes`;
+
+  const rows=await fetch(`${SB}/rest/v1/gcorr_alerts?select=choc_date,alerte_id,region_accueil,zone_origine,pdi_personnes,pdi_menages,severite,description${filter}&order=choc_date.desc`,{headers:{...H,'Range':`${from}-${to}`}}).then(r=>r.json());
+
+  document.getElementById('depTable').innerHTML=rows.map(r=>`<tr>
+    <td><span style="font-family:var(--fm);font-size:.75rem">${r.choc_date||''}</span></td>
+    <td><span class="tag-region">${r.region_accueil||'?'}</span></td>
+    <td style="font-size:.75rem;color:var(--ink3)">${(r.zone_origine||'').replace(/_/g,' ')}</td>
+    <td><b style="font-family:var(--fm)">${fmtNum(r.pdi_personnes)}</b></td>
+    <td style="font-family:var(--fm);font-size:.8rem">${r.pdi_menages||''}</td>
+    <td><span class="severity ${r.severite==='High'?'sev-high':r.severite==='Medium'?'sev-med':'sev-low'}">${r.severite||'?'}</span></td>
+    <td><span class="td-truncate" style="max-width:280px" title="${(r.description||'').replace(/"/g,'&quot;')}">${(r.description||'').substring(0,90)}${(r.description||'').length>90?'…':''}</span></td>
+  </tr>`).join('');
+
+  // Pagination
+  const pages=Math.ceil(depTotal/DEP_PAGE);
+  const pg=document.getElementById('depPagination');
+  if(pages<=1){pg.style.display='none';return;}
+  pg.style.display='flex';
+  let html=`<button class="pg-btn" onclick="loadDepTable('${filter}',${depPage-1})" ${depPage===0?'disabled':''}>← Préc.</button>`;
+  for(let i=Math.max(0,depPage-2);i<=Math.min(pages-1,depPage+2);i++)
+    html+=`<button class="pg-btn${i===depPage?' active':''}" onclick="loadDepTable('${filter}',${i})">${i+1}</button>`;
+  html+=`<button class="pg-btn" onclick="loadDepTable('${filter}',${depPage+1})" ${depPage>=pages-1?'disabled':''}>Suiv. →</button>`;
+  html+=`<span class="pg-info">Page ${depPage+1}/${pages} · ${depTotal} alertes</span>`;
+  pg.innerHTML=html;
+}
+
+// ══ EXPLORER ══════════════════════════════════════════
+let expPage=0, expTotal=0;
+const PAGE_SIZE=25;
+const COLUMNS={
+  incidents:['report_period','region','incident_type','description','killed_civilians','killed_military','wounded','perpetrator','location'],
+  gcorr_alerts:['choc_date','region_accueil','zone_origine','pdi_personnes','pdi_menages','severite','hommes','femmes','garcons','filles','description'],
+  pop_movement_reported_ocha_field:['report_period','region','origin','destination','households','persons','cause','notes'],
+  humanitarian_response:['report_period','region','actor','sector','activity','location','beneficiaries'],
+  access:['report_period','region','location','status','description','impact'],
+  cmcoord:['report_period','region','type','key_points','convoy_info','date']
+};
+const CL={report_period:'Période',region:'Région',incident_type:'Type',description:'Description',killed_civilians:'Civils tués',killed_military:'Mil. tués',wounded:'Blessés',perpetrator:'Auteur',location:'Localisation',origin:'Origine',destination:'Destination',households:'Ménages',persons:'Personnes',cause:'Cause',notes:'Notes',actor:'Acteur',sector:'Secteur',activity:'Activité',beneficiaries:'Bénéficiaires',status:'Statut',impact:'Impact',type:'Type',key_points:'Points clés',convoy_info:'Convoi',date:'Date',choc_date:'Date choc',region_accueil:'Région accueil',zone_origine:'Zone origine',pdi_personnes:'Personnes',pdi_menages:'Ménages',severite:'Sévérité',hommes:'Hommes',femmes:'Femmes',garcons:'Garçons',filles:'Filles'};
+
+function initExplorer(){window._expInit=true;runExplorer();}
+function resetExplorer(){document.getElementById('expRegion').value='';document.getElementById('expPeriod').value='';document.getElementById('expSearch').value='';expPage=0;runExplorer();}
+
+async function runExplorer(page){
+  if(page!==undefined)expPage=page;
+  const table=document.getElementById('expTable').value;
+  const region=document.getElementById('expRegion').value;
+  const period=document.getElementById('expPeriod').value;
+  const search=document.getElementById('expSearch').value.trim();
+  const btn=document.getElementById('expBtn');
+  btn.disabled=true;btn.textContent='...';
+  const cols=COLUMNS[table]||['id'];
+  let filter='';
+  const regionCol=table==='gcorr_alerts'?'region_accueil':'region';
+  if(region) filter+=`&${regionCol}=ilike.*${encodeURIComponent(region)}*`;
+  if(period){
+    if(table==='gcorr_alerts') filter+=`&choc_year=eq.${period}`;
+    else filter+=`&report_period=ilike.*${period}*`;
+  }
+  if(search){
+    const sf=table==='incidents'?'description':table==='gcorr_alerts'?'description':table==='pop_movement_reported_ocha_field'?'cause':table==='humanitarian_response'?'activity':table==='access'?'description':'key_points';
+    filter+=`&${sf}=ilike.*${encodeURIComponent(search)}*`;
+  }
+  try{
+    const cr=await fetch(`${SB}/rest/v1/${table}?select=id${filter}`,{headers:{...H,'Prefer':'count=exact','Range':'0-0'}}).then(r=>r.headers.get('content-range'));
+    expTotal=cr?parseInt(cr.split('/')[1]):0;
+    const from=expPage*PAGE_SIZE,to=from+PAGE_SIZE-1;
+    const orderCol=table==='gcorr_alerts'?'choc_date':'id';
+    const data=await fetch(`${SB}/rest/v1/${table}?select=${cols.join(',')}${filter}&order=${orderCol}.desc`,{headers:{...H,'Range':`${from}-${to}`}}).then(r=>r.json());
+    document.getElementById('expCount').textContent=`${expTotal} enregistrement${expTotal!==1?'s':''}`;
+    document.getElementById('expNote').textContent=search?`· "${search}"` :'';
+    document.getElementById('expHead').innerHTML='<tr>'+cols.map(c=>`<th>${CL[c]||c}</th>`).join('')+'</tr>';
+    if(!data.length){
+      document.getElementById('expBody').innerHTML=`<tr><td colspan="${cols.length}" style="padding:32px;text-align:center;color:var(--ink3)">Aucun résultat</td></tr>`;
+    }else{
+      document.getElementById('expBody').innerHTML=data.map(row=>'<tr>'+cols.map(c=>{
+        const v=row[c];
+        if(v===null||v===undefined||v==='')return '<td style="color:var(--border)">—</td>';
+        if(c==='region'||c==='region_accueil')return `<td><span class="tag-region">${String(v)}</span></td>`;
+        if((c==='killed_civilians'||c==='killed_military'||c==='pdi_personnes')&&Number(v)>0)return `<td><span style="font-family:var(--fm);font-weight:600">${fmtNum(Number(v))}</span></td>`;
+        if(c==='severite'){const cl=v==='High'?'sev-high':v==='Medium'?'sev-med':'sev-low';return `<td><span class="severity ${cl}">${v}</span></td>`;}
+        if(c==='status'){const cl=/suspendu|difficile|risque|interrompu/i.test(String(v))?'sev-high':/convoi/i.test(String(v))?'sev-low':'sev-med';return `<td><span class="severity ${cl}">${String(v).substring(0,20)}</span></td>`;}
+        const s=String(v);
+        return s.length>80?`<td><span class="td-truncate" title="${s.replace(/"/g,'&quot;')}">${s.substring(0,80)}…</span></td>`:`<td>${s}</td>`;
+      }).join('')+'</tr>').join('');
+    }
+    // pagination
+    const pages=Math.ceil(expTotal/PAGE_SIZE);
+    const pg=document.getElementById('expPagination');
+    if(pages<=1){pg.style.display='none';}else{
+      pg.style.display='flex';
+      let html=`<button class="pg-btn" onclick="runExplorer(${expPage-1})" ${expPage===0?'disabled':''}>← Préc.</button>`;
+      for(let i=Math.max(0,expPage-2);i<=Math.min(pages-1,expPage+2);i++)html+=`<button class="pg-btn${i===expPage?' active':''}" onclick="runExplorer(${i})">${i+1}</button>`;
+      html+=`<button class="pg-btn" onclick="runExplorer(${expPage+1})" ${expPage>=pages-1?'disabled':''}>Suiv. →</button>`;
+      html+=`<span class="pg-info">Page ${expPage+1}/${pages} · ${expTotal} lignes</span>`;
+      pg.innerHTML=html;
+    }
+  }catch(e){toast('Erreur: '+e.message,'err');}
+  btn.disabled=false;btn.textContent='Rechercher';
+}
+
+// ══ QUERY / AI ══════════════════════════════════════
+function sq(q){document.getElementById('qInput').value=q;document.getElementById('qInput').focus();}
+
+async function buildContext(){
+  let parts=[];
+  // GCORR displacement data — primary source
+  const gcorr=await sb('gcorr_alerts?select=choc_year,choc_month,region_accueil,zone_origine,pdi_personnes,pdi_menages,severite,hommes,femmes,garcons,filles,description&order=choc_date.desc&limit=80');
+  if(gcorr.length){
+    // Aggregate by year
+    const byYear={};
+    gcorr.forEach(r=>{const y=r.choc_year;byYear[y]=byYear[y]||{p:0,m:0,n:0};byYear[y].p+=(r.pdi_personnes||0);byYear[y].m+=(r.pdi_menages||0);byYear[y].n++;});
+    parts.push('=== GCORR — NOUVEAUX DÉPLACEMENTS (source officielle) ===\n'+
+      'Résumé par année: '+Object.entries(byYear).map(([y,v])=>`${y}: ${fmtNum(v.p)} personnes (${v.m} ménages, ${v.n} alertes)`).join(' | ')+'\n'+
+      gcorr.map(r=>`[${r.choc_year}-${String(r.choc_month).padStart(2,'0')}|${r.region_accueil}] ${r.zone_origine||'?'}: ${fmtNum(r.pdi_personnes)} pers. / ${r.pdi_menages} mén. Sévérité:${r.severite}`).join('\n'));
+  }
+  // Incidents
+  const inc=await sb('incidents?select=report_period,region,incident_type,description,killed_civilians,killed_military&order=id.desc&limit=50');
+  if(inc.length)parts.push('=== INCIDENTS SÉCURITAIRES ===\n'+inc.map(r=>`[${r.report_period}|${r.region}] ${r.incident_type}: ${(r.description||'').substring(0,100)}${r.killed_civilians?' Civils tués:'+r.killed_civilians:''}`).join('\n'));
+  // Response
+  const resp=await sb('humanitarian_response?select=report_period,region,actor,sector,activity,beneficiaries&order=id.desc&limit=30');
+  if(resp.length)parts.push('=== RÉPONSE HUMANITAIRE ===\n'+resp.map(r=>`[${r.report_period}|${r.region}] ${r.actor} (${r.sector}): ${(r.activity||'').substring(0,80)} Bénéf:${r.beneficiaries||'N/A'}`).join('\n'));
+  // Access
+  const acc=await sb('access?select=report_period,region,location,status,description&order=id.desc&limit=25');
+  if(acc.length)parts.push('=== ACCÈS HUMANITAIRE ===\n'+acc.map(r=>`[${r.report_period}|${r.region}] ${r.location} - ${r.status}: ${(r.description||'').substring(0,80)}`).join('\n'));
+  return parts.join('\n\n');
+}
+
+async function runQuery(){
+  const question=document.getElementById('qInput').value.trim();
+  if(!question)return;
+  const btn=document.getElementById('qBtn');
+  btn.disabled=true;btn.textContent='Analyse...';
+  const resEl=document.getElementById('results');
+  const lid='l'+Date.now();
+  resEl.insertAdjacentHTML('afterbegin',`<div class="res-card" id="${lid}"><div class="res-meta"><div class="res-icon">🤖</div><div><div class="res-title">${question}</div><div class="res-time">Récupération des données...</div></div></div><div class="dots"><span></span><span></span><span></span></div></div>`);
+  try{
+    const context=await buildContext();
+    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:1500,
+      system:`Tu es un analyste humanitaire senior spécialisé sur le Burkina Faso pour OCHA. Données couvrent 2024-2026. Les données GCORR sont la SOURCE OFFICIELLE pour les déplacements. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan. Réponds en français sauf si question en anglais. Sois précis avec les chiffres.`,
+      messages:[{role:'user',content:`DONNÉES:\n${context}\n\nQUESTION: ${question}`}]
+    })});
+    const data=await resp.json();
+    const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+    const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById(lid).outerHTML=`<div class="res-card"><div class="res-meta"><div class="res-icon">🤖</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body">${answer}</div></div>`;
+  }catch(e){document.getElementById(lid).outerHTML=`<div class="res-card" style="border-left:3px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;}
+  btn.disabled=false;btn.textContent='Analyser →';
+  document.getElementById('qInput').value='';
+}
+
+async function generateReport(){
+  const type=document.getElementById('rType').value,region=document.getElementById('rRegion').value,period=document.getElementById('rPeriod').value,lang=document.getElementById('rLang').value;
+  const btn=document.getElementById('repBtn');btn.disabled=true;btn.textContent='⏳...';
+  const prompts={
+    weekly:(r,p,l)=>l==='en'?`Weekly humanitarian situation report Burkina Faso${r!=='all'?', '+r:''}, ${p}. Include key incidents, GCORR displacement figures, response highlights, access constraints. ~500 words.`:`Synthèse hebdomadaire${r!=='all'?' '+r:' Burkina Faso'}, ${p}. Incidents clés, chiffres déplacements GCORR, réponse, accès. ~500 mots.`,
+    monthly:(r,p,l)=>`Narrative mensuelle OCHA ~500 mots en ${l==='en'?'anglais':'français'} pour ${p}${r!=='all'?', '+r:''}. Contexte sécuritaire → déplacements avec chiffres GCORR → réponse → gaps & accès → perspectives.`,
+    sitrep:(r,p,l)=>`SitRep complet en ${l==='en'?'anglais':'français'} ${p}, ${r!=='all'?r:'Burkina Faso'}. SÉCURITÉ | DÉPLACEMENT (données GCORR) | BESOINS | RÉPONSE | ACCÈS | COORDINATION | PRIORITÉS.`,
+    security:(r,p)=>`Analyse sécuritaire ${p}${r!=='all'?', '+r:''}. Bilan incidents, hotspots, types violence, tendances, recommandations.`,
+    displacement:(r,p)=>`Analyse déplacements internes ${p}${r!=='all'?', '+r:''}. Données GCORR: effectifs PDI, zones départ/accueil, causes, profil déplacés (H/F/enfants), besoins urgents.`,
+    donor:(r,p,l)=>`Résumé donateur en ${l==='en'?'anglais':'français'} ${p}. Résultats, bénéficiaires, gaps, financement, impact par secteur.`
+  };
+  const resEl=document.getElementById('results');const lid='r'+Date.now();
+  resEl.insertAdjacentHTML('afterbegin',`<div class="res-card" id="${lid}"><div class="res-meta"><div class="res-icon">📄</div><div><div class="res-title">Génération...</div></div></div><div class="dots"><span></span><span></span><span></span></div></div>`);
+  try{
+    const context=await buildContext();
+    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:1500,
+      system:`Rédacteur humanitaire senior OCHA Burkina Faso. Rapports professionnels basés sur données réelles. Les données GCORR sont la source officielle pour les déplacements. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan.`,
+      messages:[{role:'user',content:`DONNÉES:\n${context}\n\nDEMANDE: ${prompts[type](region,period,lang)}`}]
+    })});
+    const data=await resp.json();const text=data.content?.[0]?.text||'';
+    const labels={weekly:'Synthèse hebdo',monthly:'Narrative mensuelle',sitrep:'SitRep',security:'Rapport sécurité',displacement:'Rapport déplacement',donor:'Résumé donateur'};
+    const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+    document.getElementById(lid).outerHTML=`<div class="res-card"><div class="res-meta"><div class="res-icon">📄</div><div><div class="res-title">${labels[type]} · ${region!=='all'?region:'National'} · ${period}</div><div class="res-time">${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button><button class="btn-print" onclick="printRes(this)">Imprimer</button></div><div class="res-body">${text}</div></div>`;
+  }catch(e){document.getElementById(lid).outerHTML=`<div class="res-card" style="border-left:3px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;}
+  btn.disabled=false;btn.textContent='📄 Générer';
+}
+
+function copyTxt(btn){const t=btn.closest('.res-card').querySelector('.res-body').textContent;navigator.clipboard.writeText(t).then(()=>{btn.textContent='✓ Copié!';setTimeout(()=>btn.textContent='Copier',2000);});}
+function printRes(btn){const t=btn.closest('.res-card').querySelector('.res-body').textContent;const w=window.open('','_blank');w.document.write(`<html><head><title>OCHA BFA</title><style>body{font-family:serif;max-width:700px;margin:40px auto;line-height:1.8}pre{white-space:pre-wrap;font-family:serif}</style></head><body><h2>Burkina Faso — Rapport Humanitaire OCHA</h2><hr><pre>${t}</pre></body></html>`);w.print();}
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),4000);}
+
+// Also need to rename table in explorer - check if old name exists
+// The explorer references pop_movement_reported_ocha_field - user needs to rename in Supabase
+
+loadDashboard();
+</script>
+</body>
+</html>
