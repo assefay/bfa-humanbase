@@ -763,27 +763,50 @@ function sq(q){document.getElementById('qInput').value=q;document.getElementById
 
 async function buildContext(){
   let parts=[];
-  // GCORR displacement data — primary source
-  const gcorr=await sb('gcorr_alerts?select=choc_year,choc_month,region_arrivee,zone_origine_raw,pdi_personnes,pdi_menages,severite,hommes,femmes,garcons,filles,description&order=choc_date.desc&limit=80');
+
+  // GCORR — fetch ALL records, pre-aggregate by year+region
+  // Claude receives ready-made numbers, never has to sum or count
+  const gcorr=await sb('gcorr_alerts?select=choc_year,choc_month,choc_date,region_arrivee,zone_origine_raw,pdi_personnes,pdi_menages,severite&limit=1000&order=choc_date.desc');
   if(gcorr.length){
-    // Aggregate by year
-    const byYear={};
-    gcorr.forEach(r=>{const y=r.choc_year;byYear[y]=byYear[y]||{p:0,m:0,n:0};byYear[y].p+=(r.pdi_personnes||0);byYear[y].m+=(r.pdi_menages||0);byYear[y].n++;});
-    parts.push('=== GCORR — NOUVEAUX DÉPLACEMENTS (source officielle) ===\n'+
-      'Résumé par année: '+Object.entries(byYear).map(([y,v])=>`${y}: ${fmtNum(v.p)} personnes (${v.m} ménages, ${v.n} alertes)`).join(' | ')+'\n'+
-      gcorr.map(r=>`[${r.choc_year}-${String(r.choc_month).padStart(2,'0')}|${r.region_arrivee}] ${r.zone_origine_raw||'?'}: ${fmtNum(r.pdi_personnes)} pers. / ${r.pdi_menages} mén. Sévérité:${r.severite}`).join('\n'));
+    const byYR={}, byY={};
+    gcorr.forEach(r=>{
+      const yr=r.choc_year, reg=r.region_arrivee||'?', k=`${yr}|${reg}`;
+      byYR[k]=byYR[k]||{yr,reg,persons:0,menages:0,count:0,alerts:[]};
+      byYR[k].persons+=(r.pdi_personnes||0);
+      byYR[k].menages+=(r.pdi_menages||0);
+      byYR[k].count++;
+      byYR[k].alerts.push(`${r.choc_date}:${r.pdi_personnes||0}`);
+      byY[yr]=byY[yr]||{persons:0,menages:0,count:0};
+      byY[yr].persons+=(r.pdi_personnes||0);
+      byY[yr].menages+=(r.pdi_menages||0);
+      byY[yr].count++;
+    });
+    const annuel=Object.entries(byY).sort((a,b)=>a[0]-b[0])
+      .map(([yr,v])=>`${yr}: ${fmtNum(v.persons)} personnes / ${fmtNum(v.menages)} ménages / ${v.count} alertes`).join(' | ');
+    const detail=Object.values(byYR).sort((a,b)=>b.yr-a.yr||b.persons-a.persons)
+      .map(v=>`  [${v.yr}|${v.reg}] ${fmtNum(v.persons)} personnes, ${fmtNum(v.menages)} ménages, ${v.count} alertes. Alertes: ${v.alerts.join(', ')}`).join('\n');
+    parts.push(
+      '=== GCORR NOUVEAUX DÉPLACEMENTS (données pré-agrégées — chiffres exacts, ne pas recalculer) ===\n'+
+      'TOTAUX PAR ANNÉE: '+annuel+'\n'+
+      'DÉTAIL PAR ANNÉE ET RÉGION:\n'+detail
+    );
   }
-  // Incidents
-  const inc=await sb('incidents?select=report_period,region,incident_type,description,killed_civilians,killed_military&order=id.desc&limit=50');
-  if(inc.length)parts.push('=== INCIDENTS SÉCURITAIRES ===\n'+inc.map(r=>`[${r.report_period}|${r.region}] ${r.incident_type}: ${(r.description||'').substring(0,100)}${r.killed_civilians?' Civils tués:'+r.killed_civilians:''}`).join('\n'));
-  // Response
-  const resp=await sb('humanitarian_response?select=report_period,region,actor,sector,activity,beneficiaries&order=id.desc&limit=30');
-  if(resp.length)parts.push('=== RÉPONSE HUMANITAIRE ===\n'+resp.map(r=>`[${r.report_period}|${r.region}] ${r.actor} (${r.sector}): ${(r.activity||'').substring(0,80)} Bénéf:${r.beneficiaries||'N/A'}`).join('\n'));
-  // Access
+
+  const inc=await sb('incidents?select=report_period,region,incident_type,description,killed_civilians,killed_military&order=id.desc&limit=60');
+  if(inc.length)parts.push('=== INCIDENTS SÉCURITAIRES ===\n'+
+    inc.map(r=>`[${r.report_period}|${r.region}] ${r.incident_type}: ${(r.description||'').substring(0,100)}${r.killed_civilians?' Civils tués:'+r.killed_civilians:''}`).join('\n'));
+
+  const resp=await sb('humanitarian_response?select=report_period,region,actor,sector,activity,beneficiaries&order=id.desc&limit=40');
+  if(resp.length)parts.push('=== RÉPONSE HUMANITAIRE ===\n'+
+    resp.map(r=>`[${r.report_period}|${r.region}] ${r.actor} (${r.sector}): ${(r.activity||'').substring(0,80)} Bénéf:${r.beneficiaries||'N/A'}`).join('\n'));
+
   const acc=await sb('access?select=report_period,region,location,status,description&order=id.desc&limit=25');
-  if(acc.length)parts.push('=== ACCÈS HUMANITAIRE ===\n'+acc.map(r=>`[${r.report_period}|${r.region}] ${r.location} - ${r.status}: ${(r.description||'').substring(0,80)}`).join('\n'));
+  if(acc.length)parts.push('=== ACCÈS HUMANITAIRE ===\n'+
+    acc.map(r=>`[${r.report_period}|${r.region}] ${r.location} - ${r.status}: ${(r.description||'').substring(0,80)}`).join('\n'));
+
   return parts.join('\n\n');
 }
+
 
 async function runQuery(){
   const question=document.getElementById('qInput').value.trim();
