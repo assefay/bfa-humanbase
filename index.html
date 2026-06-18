@@ -313,7 +313,6 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
         <option value="acled_incidents">Incidents ACLED</option>
         <option value="gcorr_alerts">Alertes GCORR</option>
         <option value="zone_enclavees">Zones enclavées</option>
-        <option value="pop_movement_reported_ocha_field">Mouvements terrain (OCHA)</option>
         <option value="daily_updates">Mises à jour terrain</option>
         <option value="zone_enclavees">Zones enclavées</option>
       </select>
@@ -880,7 +879,7 @@ async function buildContext(question){
   }
 
   // 1. GCORR
-  if(isAll||hasTable('gcorr_alerts')||hasTable('pop_movement_reported_ocha_field')){
+  if(isAll||hasTable('gcorr_alerts')){
     const gcorr=await sb(`gcorr_alerts?select=choc_year,choc_month,choc_date,region_arrivee,province_arrivee,commune_arrivee,origine_region,origine_province,origine_commune,pdi_personnes,pdi_menages,severite,hommes,femmes,garcons,filles&limit=1000${rGcorr}${yGcorr}&order=choc_date.desc`);
     if(gcorr.length){
       let totP=0,totM=0;
@@ -984,11 +983,6 @@ async function buildContext(question){
     const daily=await sb(`daily_updates?select=date,region_normalized,content&limit=30${rDaily}${yDaily}&order=date.desc`);
     if(daily.length){const rows=daily.map(r=>`  ${tag(r.content)}[${r.date}|${r.region_normalized}] ${(r.content||'').substring(0,200)}`).join('\n');parts.push(`=== MISES À JOUR TERRAIN [${daily.length}] ===\n${rows}`);}
   }
-  // 7. MOUVEMENTS OCHA
-  if(isAll||hasTable('pop_movement_reported_ocha_field')){
-    const mov=await sb(`pop_movement_reported_ocha_field?select=report_period,region,origin,destination,persons,households,cause&limit=60${rStd}${yStd}&order=id.desc`);
-    if(mov.length){const rows=mov.map(r=>`  [${r.report_period}|${r.region}] ${r.origin||'?'}→${r.destination||'?'}: ${r.persons?fmtNum(r.persons)+' pers.':''} ${r.households?r.households+' mén.':''} Cause: ${(r.cause||'').substring(0,50)}`).join('\n');parts.push(`=== MOUVEMENTS TERRAIN OCHA [${mov.length}] ===\n${rows}`);}
-  }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${region?' (pour '+region+')':''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   return parts.join('\n\n');
 }
@@ -1091,7 +1085,6 @@ const COLUMNS={
   weekly_reports:['week_start','week_end','region','point_saillant','civils_tues','deplaces_estimes','contexte_securitaire','mouvements_population','reponse_humanitaire','acces_cmcoord'],
   ocha_field_incidents:['incident_date','week_start','region','location','incident_type','perpetrator','killed_civilians','killed_military','wounded','displaced_persons','description'],
   acled_incidents:['event_date','adm1_name','adm2_name','acled_admin3','event_type','sub_event_type','actor1','actor2','fatalities','civilian_targeting','notes'],
-  pop_movement_reported_ocha_field:['report_period','region','origin','destination','households','persons','cause','notes'],
   humanitarian_response:['report_period','region','actor','sector','activity','location','beneficiaries'],
   access:['report_period','region','location','status','description','impact'],
   cmcoord:['report_period','region','type','key_points','convoy_info','date'],
@@ -1114,7 +1107,7 @@ async function runExplorer(page){
     else if(table==='zone_enclavees')filter+=`&report_date=gte.${period}-01-01&report_date=lte.${period}-12-31`;
     else filter+=`&report_period=ilike.*${period}*`;
   }
-  if(search){const sf=table==='zone_enclavees'?'localite':table==='ocha_field_incidents'?'description':table==='weekly_reports'?'point_saillant':table==='acled_incidents'?'notes':table==='gcorr_alerts'?'description':table==='pop_movement_reported_ocha_field'?'cause':table==='humanitarian_response'?'activity':table==='access'?'description':table==='daily_updates'?'content':'key_points';filter+=`&${sf}=ilike.*${encodeURIComponent(search)}*`;}
+  if(search){const sf=table==='zone_enclavees'?'localite':table==='ocha_field_incidents'?'description':table==='weekly_reports'?'point_saillant':table==='acled_incidents'?'notes':table==='gcorr_alerts'?'description':table==='humanitarian_response'?'activity':table==='access'?'description':table==='daily_updates'?'content':'key_points';filter+=`&${sf}=ilike.*${encodeURIComponent(search)}*`;}
   try{
     const cr=await fetch(`${SB}/rest/v1/${table}?select=id${filter}`,{headers:{...H,'Prefer':'count=exact','Range':'0-0'}}).then(r=>r.headers.get('content-range'));
     expTotal=cr?parseInt(cr.split('/')[1]):0;
