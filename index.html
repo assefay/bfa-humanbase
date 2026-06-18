@@ -1190,7 +1190,7 @@ async function runSituation(){
   try{
     const context=await buildContext(question);
     const systemPrompt=await buildSystemPrompt();
-    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
     const data=await resp.json();const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
     const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
