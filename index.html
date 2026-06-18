@@ -211,6 +211,7 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
   </div>
   <div style="font-size:.95rem;font-weight:600;color:rgba(255,255,255,.75)" id="loginWho">Qui êtes-vous ?</div>
   <div style="display:flex;gap:14px" id="loginBtns">
+    <button class="login-user-btn" onclick="selectUser('Assefa')">Assefa</button>
     <button class="login-user-btn" onclick="selectUser('Claude')">Claude</button>
     <button class="login-user-btn" onclick="selectUser('Barry')">Barry</button>
   </div>
@@ -1175,7 +1176,7 @@ async function runSituation(){
   btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
 }
 
-const USERS={Claude:'OCHA2026',Barry:'OCHA2026'};
+const USERS={Assefa:'OCHA2026',Claude:'OCHA2026',Barry:'OCHA2026'};
 let _loginUser=null;
 function selectUser(name){_loginUser=name;document.getElementById('loginWho').textContent='Bonjour '+name+' — entrez le mot de passe';document.getElementById('loginBtns').style.display='none';document.getElementById('loginPwRow').style.display='flex';setTimeout(()=>document.getElementById('loginPw').focus(),50);}
 function checkLogin(){const pw=document.getElementById('loginPw').value;if(pw===USERS[_loginUser]){document.getElementById('loginOverlay').style.display='none';window._currentUser=_loginUser;}else{document.getElementById('loginErr').textContent='Mot de passe incorrect.';document.getElementById('loginPw').value='';document.getElementById('loginPw').focus();}}
