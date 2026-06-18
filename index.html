@@ -167,7 +167,7 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 /* ANALYSE DE SITUATION */
 #situation{padding:24px;gap:16px}
 .sit-hero{background:linear-gradient(135deg,#1a3a2a 0%,#0a2a1a 100%);border-radius:var(--rl);padding:24px 28px;position:relative;overflow:hidden}
-.sit-hero::after{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:rgba(63,185,80,.05)}
+.sit-hero::after{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:rgba(63,185,80,.05);pointer-events:none}
 .sit-title{font-size:1rem;font-weight:700;color:white;margin-bottom:3px}
 .sit-sub{font-size:.83rem;color:rgba(255,255,255,.6);margin-bottom:16px;line-height:1.5}
 .sit-input{flex:1;padding:12px 16px;border-radius:var(--r);border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.1);color:white;font-family:var(--fh);font-size:.92rem;outline:none}
@@ -186,7 +186,7 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
   <div class="logo-text">BFA HumanBase <span>Burkina Faso — Base humanitaire OCHA</span></div>
   <div class="header-right"><div class="db-pill"><div class="db-dot spin" id="dot"></div><span id="statusTxt">Connexion...</span></div></div>
 </header>
-<nav class="nav-tabs">
+<nav class="nav-tabs" style="display:none">
   <button class="tab-btn active" onclick="showTab('dash')">📊 Tableau de bord</button>
   <button class="tab-btn" onclick="showTab('deplacements')">🔴 Nouveaux Déplacements</button>
   <button class="tab-btn" onclick="showTab('explorer')">🔍 Explorateur</button>
@@ -195,7 +195,7 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 </nav>
 
 <!-- DASHBOARD -->
-<div class="view active" id="dash" style="flex-direction:column">
+<div class="view" id="dash" style="flex-direction:column">
   <div style="padding:24px 24px 0"><div class="dash-grid5" id="kpiRow">
     <div class="kpi k-inc"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Incidents</div><div class="kpi-sub">sécurité</div></div>
     <div class="kpi k-mov"><div class="kpi-val skel" style="width:60px;height:30px"></div><div class="kpi-lbl">Alertes PDI</div><div class="kpi-sub">GCORR</div></div>
@@ -387,21 +387,14 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 </div>
 
 <!-- ANALYSE DE SITUATION -->
-<div class="view" id="situation" style="flex-direction:column">
+<div class="view active" id="situation" style="flex-direction:column">
   <div style="padding:24px 24px 0">
     <div class="sit-hero">
       <div class="sit-title">🌍 Analyse de situation — Question libre</div>
       <div class="sit-sub">Posez une question en français. L'IA utilise les données de toutes les tables ainsi que la base de connaissances contextuelle pour formuler une réponse structurée.</div>
       <div class="qbar">
         <input class="sit-input" id="sitInput" placeholder="Ex: Quelles sont les zones enclavées en Soum en 2026 ?" oninput="this.setAttribute('data-val',this.value)" onkeydown="if(event.key==='Enter')runSituation()">
-        <button type="button" class="btn-sit" id="sitBtn" onmousedown="event.preventDefault();runSituation()">Analyser →</button>
-      </div>
-      <div class="sit-chips" style="margin-top:10px">
-        <div class="sit-chip" onclick="ssq('Zones enclavées Soum avril 2026')">Zones enclavées Soum</div>
-        <div class="sit-chip" onclick="ssq('Quelles localités sont inaccessibles en Liptako en 2026 ?')">Localités inaccessibles Liptako</div>
-        <div class="sit-chip" onclick="ssq('Évolution de l accès humanitaire Koulsé 2026')">Accès Koulsé 2026</div>
-        <div class="sit-chip" onclick="ssq('Combien de personnes vivent dans des zones enclavées en 2026 ?')">Population zones enclavées</div>
-        <div class="sit-chip" onclick="ssq('Comparer les zones enclavées avril et mai 2026')">Comparaison avril-mai 2026</div>
+        <button type="button" class="btn-sit" id="sitBtn" onclick="runSituation()">Analyser →</button>
       </div>
     </div>
   </div>
@@ -784,10 +777,14 @@ async function buildContext(question){
 
   // ZONE ENCLAVEES
   if(isAll||hasTable('zone_enclavees')){
-    const zones=await sb(`zone_enclavees?select=report_date,adm1_name,adm2_name,localite,niveau,statut,population_total,pdi,pop_non_deplacee${rZone}${yZone}&order=report_date.desc&limit=300`);
+    const zones=await sb(`zone_enclavees?select=report_date,adm1_name,adm2_name,localite,niveau,statut,population_total,pdi,pop_non_deplacee${rZone}${yZone}&order=report_date.desc&limit=600`);
     if(zones.length){
+      const latestDate=zones[0].report_date;
+      const latestZones=zones.filter(r=>r.report_date===latestDate);
+      const _seenZ=new Set();
+      const dedupZones=latestZones.filter(r=>{const k=`${r.localite}|${r.niveau}`;return _seenZ.has(k)?false:(_seenZ.add(k),true);});
       const byDate={};
-      zones.forEach(r=>{
+      dedupZones.forEach(r=>{
         const k=r.report_date;
         byDate[k]=byDate[k]||{date:k,n1:{count:0,pop:0,pdi:0,nonDep:0,locs:[]},n2:{count:0,pop:0,pdi:0,nonDep:0,locs:[]},n3:{count:0,pop:0,pdi:0,nonDep:0,locs:[]}};
         const nk=r.niveau===1?'n1':r.niveau===2?'n2':'n3';
@@ -806,7 +803,7 @@ async function buildContext(question){
           `    Zone difficile d'accès 2: ${d.n2.count} localités · ${fmtNum(d.n2.pop)} pers. (PDI: ${fmtNum(d.n2.pdi)}, Non-dép: ${fmtNum(d.n2.nonDep)}) · ${d.n2.locs.join(', ')}\n`+
           `    Zone difficile d'accès 3: ${d.n3.count} localités · ${fmtNum(d.n3.pop)} pers. (PDI: ${fmtNum(d.n3.pdi)}, Non-dép: ${fmtNum(d.n3.nonDep)}) · ${d.n3.locs.join(', ')}`;
       }).join('\n');
-      parts.push(`=== ZONES DIFFICILES D'ACCÈS [${zones.length} entrées] ===\n${summary}`);
+      parts.push(`=== ZONES DIFFICILES D'ACCÈS [${dedupZones.length} entrées · données du ${latestDate}] ===\n${summary}`);
     }else{gaps.push("Zones difficiles d'accès");parts.push(`=== ZONES ENCLAVÉES ===\nAucune donnée${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
 
@@ -1140,7 +1137,7 @@ function copyTxt(btn){const el=btn.closest('.res-card,.sit-res-card').querySelec
 function printRes(btn){const el=btn.closest('.res-card').querySelector('.res-body');const raw=el.getAttribute('data-raw');const t=raw?decodeURIComponent(raw):el.textContent;const w=window.open('','_blank');w.document.write(`<html><head><title>OCHA BFA</title><script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"><\/script><style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;color:#222}h1,h2,h3{line-height:1.3}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}th{background:#eef3f8}</style></head><body><h2>Burkina Faso — Rapport Humanitaire OCHA</h2><hr><div id="c"></div><script>document.getElementById('c').innerHTML=(window.marked?(marked.parse?marked.parse:marked):(x=>x))(${JSON.stringify(t)});setTimeout(()=>window.print(),300);<\/script></body></html>`);w.document.close();}
 function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),4000);}
 
-loadDashboard();
+
 </script>
 </body>
 </html>
