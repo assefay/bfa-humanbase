@@ -178,9 +178,50 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 .sit-chip{font-size:.73rem;padding:4px 12px;background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);border-radius:18px;color:rgba(255,255,255,.8);cursor:pointer}
 .sit-chip:hover{background:rgba(63,185,80,.25);color:white}
 .sit-res-card{background:var(--white);border-radius:var(--rl);padding:22px;box-shadow:var(--shadow);border:1px solid var(--border);border-left:4px solid var(--green)}
+.login-overlay{position:fixed;inset:0;background:var(--ink);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+.login-user-btn{padding:18px 36px;border:2px solid rgba(255,255,255,.2);border-radius:var(--rl);background:rgba(255,255,255,.08);color:white;font-family:var(--fh);font-size:1.05rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+.login-user-btn:hover{background:rgba(255,255,255,.16);border-color:var(--un-blue)}
+.login-pw{padding:11px 14px;border:2px solid rgba(255,255,255,.2);border-radius:var(--r);background:rgba(255,255,255,.1);color:white;font-family:var(--fh);font-size:.92rem;outline:none;width:210px}
+.login-pw:focus{border-color:var(--un-light)}
+.login-submit{padding:11px 18px;background:var(--un-blue);color:white;border:none;border-radius:var(--r);font-family:var(--fh);font-weight:700;font-size:.88rem;cursor:pointer}
+.login-submit:hover{background:#0381d9}
+.fb-zone{border-top:1px solid var(--border);margin-top:16px;padding-top:13px}
+.fb-label{font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px}
+.fb-btns{display:flex;gap:7px;flex-wrap:wrap}
+.fb-btn{padding:6px 14px;border:1.5px solid var(--border);border-radius:20px;background:var(--off);color:var(--ink2);font-family:var(--fh);font-size:.76rem;font-weight:600;cursor:pointer;transition:all .15s}
+.fb-btn:hover{border-color:var(--un-blue);color:var(--un-blue)}
+.fb-btn.selected.score-5{background:#2E7D32;border-color:#2E7D32;color:white}
+.fb-btn.selected.score-4{background:#558B2F;border-color:#558B2F;color:white}
+.fb-btn.selected.score-3{background:#E65100;border-color:#E65100;color:white}
+.fb-btn.selected.score-2{background:#BF360C;border-color:#BF360C;color:white}
+.fb-btn.selected.score-1{background:#B71C1C;border-color:#B71C1C;color:white}
+.fb-comment-row{margin-top:10px;display:flex;gap:8px;align-items:flex-start}
+.fb-comment{flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-family:var(--fh);font-size:.82rem;color:var(--ink);background:var(--off);outline:none;resize:vertical;min-height:48px}
+.fb-comment:focus{border-color:var(--un-blue)}
+.fb-send{padding:8px 15px;background:var(--ink);color:white;border:none;border-radius:var(--r);font-family:var(--fh);font-weight:700;font-size:.76rem;cursor:pointer;white-space:nowrap}
+.fb-send:hover{background:var(--un-blue)}
+.fb-done{font-size:.82rem;color:var(--green);font-weight:600;padding:6px 0}
 </style>
 </head>
 <body>
+<div id="loginOverlay" class="login-overlay">
+  <div style="text-align:center">
+    <div style="font-size:1.4rem;font-weight:700;color:white;margin-bottom:5px">BFA HumanBase</div>
+    <div style="font-size:.82rem;color:var(--un-light);margin-bottom:8px">Burkina Faso — Base humanitaire OCHA</div>
+  </div>
+  <div style="font-size:.95rem;font-weight:600;color:rgba(255,255,255,.75)" id="loginWho">Qui êtes-vous ?</div>
+  <div style="display:flex;gap:14px" id="loginBtns">
+    <button class="login-user-btn" onclick="selectUser('Claude')">Claude</button>
+    <button class="login-user-btn" onclick="selectUser('Barry')">Barry</button>
+  </div>
+  <div id="loginPwRow" style="display:none;flex-direction:column;align-items:center;gap:7px">
+    <div style="display:flex;gap:9px">
+      <input class="login-pw" id="loginPw" type="password" placeholder="Mot de passe..." onkeydown="if(event.key==='Enter')checkLogin()">
+      <button class="login-submit" onclick="checkLogin()">OK →</button>
+    </div>
+    <div style="color:#ff8080;font-size:.76rem;min-height:16px" id="loginErr"></div>
+  </div>
+</div>
 <header>
   <div class="logo-mark"></div>
   <div class="logo-text">BFA HumanBase <span>Burkina Faso — Base humanitaire OCHA</span></div>
@@ -1128,11 +1169,18 @@ async function runSituation(){
     const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
     const data=await resp.json();const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
     const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div></div>`;
+    window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
+    document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div><div class="fb-zone" id="fbz-${lid}"><div class="fb-label">Évaluer cette réponse</div><div class="fb-btns"><button class="fb-btn score-5" onclick="selectRating(this,'${lid}',5,'Très bien')">Très bien</button><button class="fb-btn score-4" onclick="selectRating(this,'${lid}',4,'Bien')">Bien</button><button class="fb-btn score-3" onclick="selectRating(this,'${lid}',3,'Moyen')">Moyen</button><button class="fb-btn score-2" onclick="selectRating(this,'${lid}',2,'Mauvais')">Mauvais</button><button class="fb-btn score-1" onclick="selectRating(this,'${lid}',1,'Très mauvais')">Très mauvais</button></div><div class="fb-comment-row" id="fbcr-${lid}" style="display:none"><textarea class="fb-comment" id="fbcmt-${lid}" placeholder="Commentaire (optionnel)..."></textarea><button class="fb-send" onclick="saveFeedback('${lid}')">Envoyer →</button></div></div></div>`;
   }catch(e){document.getElementById(lid).outerHTML=`<div class="sit-res-card" style="border-left:4px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;}
   btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
 }
 
+const USERS={Claude:'OCHA2026',Barry:'OCHA2026'};
+let _loginUser=null;
+function selectUser(name){_loginUser=name;document.getElementById('loginWho').textContent='Bonjour '+name+' — entrez le mot de passe';document.getElementById('loginBtns').style.display='none';document.getElementById('loginPwRow').style.display='flex';setTimeout(()=>document.getElementById('loginPw').focus(),50);}
+function checkLogin(){const pw=document.getElementById('loginPw').value;if(pw===USERS[_loginUser]){document.getElementById('loginOverlay').style.display='none';window._currentUser=_loginUser;}else{document.getElementById('loginErr').textContent='Mot de passe incorrect.';document.getElementById('loginPw').value='';document.getElementById('loginPw').focus();}}
+function selectRating(btn,lid,score,label){document.querySelectorAll('#fbz-'+lid+' .fb-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');const z=document.getElementById('fbz-'+lid);z.setAttribute('data-rating',score);z.setAttribute('data-label',label);document.getElementById('fbcr-'+lid).style.display='flex';}
+async function saveFeedback(lid){const z=document.getElementById('fbz-'+lid);const rating=parseInt(z.getAttribute('data-rating')||'0');const label=z.getAttribute('data-label')||'';const comment=(document.getElementById('fbcmt-'+lid)?.value||'').trim();const{question='',answer=''}=window._fbData?.[lid]||{};if(!rating)return;try{await fetch(SB+'/rest/v1/qa_feedback',{method:'POST',headers:{...H,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({question,answer,rating,rating_label:label,comment:comment||null,user_name:window._currentUser||'anonyme'})});z.innerHTML='<div class="fb-done">✓ Merci pour votre retour !</div>';}catch(e){toast('Erreur: '+e.message,'err');}}
 function copyTxt(btn){const el=btn.closest('.res-card,.sit-res-card').querySelector('.res-body');const raw=el.getAttribute('data-raw');const t=raw?decodeURIComponent(raw):el.textContent;navigator.clipboard.writeText(t).then(()=>{btn.textContent='✓ Copié!';setTimeout(()=>btn.textContent='Copier',2000);});}
 function printRes(btn){const el=btn.closest('.res-card').querySelector('.res-body');const raw=el.getAttribute('data-raw');const t=raw?decodeURIComponent(raw):el.textContent;const w=window.open('','_blank');w.document.write(`<html><head><title>OCHA BFA</title><script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"><\/script><style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.7;color:#222}h1,h2,h3{line-height:1.3}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}th{background:#eef3f8}</style></head><body><h2>Burkina Faso — Rapport Humanitaire OCHA</h2><hr><div id="c"></div><script>document.getElementById('c').innerHTML=(window.marked?(marked.parse?marked.parse:marked):(x=>x))(${JSON.stringify(t)});setTimeout(()=>window.print(),300);<\/script></body></html>`);w.document.close();}
 function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),4000);}
