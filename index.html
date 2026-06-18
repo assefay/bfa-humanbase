@@ -704,6 +704,32 @@ async function loadKnowledge(entityName){
   return`=== BASE DE CONNAISSANCES CONTEXTUELLE ===\n${lines.join('\n')}`;
 }
 
+function enforceSourcingRules(routerOutput) {
+  const out = { ...routerOutput };
+  const tables = new Set(out.tables || []);
+  const enforced = [];
+  const add = (table, rule) => {
+    if (!tables.has(table)) { tables.add(table); enforced.push({ table, rule }); }
+  };
+  // Règle 1 : co-occurrence incidents
+  if (tables.has('acled_incidents'))      add('ocha_field_incidents', 'incident_sourcing');
+  if (tables.has('ocha_field_incidents')) add('acled_incidents',      'incident_sourcing');
+  // Règle 2 : co-occurrence déplacement
+  if (tables.has('weekly_reports')) add('gcorr_alerts',   'displacement_sourcing');
+  if (tables.has('gcorr_alerts'))   add('weekly_reports', 'displacement_sourcing');
+  // Règle 3 : requête large / transversale
+  if (out.shape === 'narrative' && !out.region) {
+    add('gcorr_alerts',         'broad_query');
+    add('weekly_reports',       'broad_query');
+    add('daily_updates',        'broad_query');
+    add('acled_incidents',      'broad_query');
+    add('ocha_field_incidents', 'broad_query');
+  }
+  out.tables = Array.from(tables);
+  out._enforced = enforced;
+  return out;
+}
+
 // ══ AI ROUTER ════════════════════════════════════════════════════════════════
 
 async function routeQuery(question) {
@@ -746,14 +772,18 @@ capitals: chefs-lieux régions/provinces/communes`;
                       || aiRegion
                       || region
                       || null;
-    return {
+    const routerOut = enforceSourcingRules({
       tables: parsed.tables || [],
       region: filterRegion,
       year: parsed.year && parsed.year !== 'null' ? parsed.year : year,
       shape: parsed.shape && SHAPE_INSTRUCTIONS[parsed.shape] ? parsed.shape : shapeSeed,
       place: place,   // {name, level, region} | null — for precise scope reporting
       reason: parsed.reason || ''
-    };
+    });
+    if (routerOut._enforced.length > 0) {
+      console.log('[sourcing] tables ajoutées par règles déterministes:', routerOut._enforced);
+    }
+    return routerOut;
   } catch(e) {
     console.warn('Router failed, fallback:', e.message);
     const {topics} = detectIntent(question);
