@@ -762,8 +762,8 @@ capitals: chefs-lieux régions/provinces/communes`;
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 150,
-        messages: [{role: 'user', content: `Tables disponibles:\n${TABLE_INDEX}\n\nQuestion: "${question}"\n\nRéponds UNIQUEMENT avec JSON valide:\n{"tables":["table1"],"region":"null_ou_nom","year":"null_ou_annee","shape":"status|trend|comparison|gap|narrative|incident","reason":"bref"}\nRÈGLES: (1) Si la question ne mentionne PAS explicitement une région, province ou commune spécifique du Burkina Faso → region DOIT être null. (2) Si la question compare des régions ou demande laquelle est la plus affectée → region null. (3) Ne pas déduire une région depuis des mots généraux comme "difficile", "accès", "national", "pays" → region null. (4) shape: "status"=état ponctuel/un lieu; "trend"=évolution dans le temps; "comparison"=comparer lieux/périodes; "gap"=croiser deux jeux (ex: alertes vs réponse); "narrative"=synthèse/situation générale; "incident"=liste d'événements.`}]
+        max_tokens: 500,
+        messages: [{role: 'user', content: `Tables disponibles:\n${TABLE_INDEX}\n\nQuestion: "${question}"\n\nRéponds UNIQUEMENT avec JSON valide:\n{"tables":["table1"],"region":"null_ou_nom","year":"null_ou_annee","shape":"status|trend|comparison|gap|narrative|incident","reason":"une phrase courte max 15 mots"}\nRÈGLES: (1) Si la question ne mentionne PAS explicitement une région, province ou commune spécifique du Burkina Faso → region DOIT être null. (2) Si la question compare des régions ou demande laquelle est la plus affectée → region null. (3) Ne pas déduire une région depuis des mots généraux comme "difficile", "accès", "national", "pays" → region null. (4) shape: "status"=état ponctuel/un lieu; "trend"=évolution dans le temps; "comparison"=comparer lieux/périodes; "gap"=croiser deux jeux (ex: alertes vs réponse); "narrative"=synthèse/situation générale; "incident"=liste d'événements.`}]
       })
     });
     const data = await resp.json();
