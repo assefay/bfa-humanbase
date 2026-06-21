@@ -716,6 +716,13 @@ function enforceSourcingRules(routerOutput) {
   // Règle 2 : co-occurrence déplacement
   if (tables.has('weekly_reports')) add('gcorr_alerts',   'displacement_sourcing');
   if (tables.has('gcorr_alerts'))   add('weekly_reports', 'displacement_sourcing');
+  // Règle 2 ter : co-occurrence accès (perception + narratifs)
+  // access_perception se suffit en tables ; les narratifs (knowledge_base,
+  // category=access_narrative) sont récupérés séparément dans buildContext.
+  // On NE rajoute PAS zone_enclavees ici : table distincte, ne jamais fusionner.
+  if (tables.has('access_perception')) {
+    enforced.push({ table: 'access_perception', rule: 'access_sourcing' });
+  }
   // Règle 3 : requête large / transversale
   if (out.shape === 'narrative' && !out.region) {
     add('gcorr_alerts',         'broad_query');
@@ -743,6 +750,7 @@ weekly_reports: rapports hebdomadaires OCHA "La semaine en bref", situation par 
 ocha_field_incidents: incidents sécuritaires terrain OCHA — TOUJOURS inclure avec acled_incidents pour les questions sur les incidents
 acled_incidents: incidents sécuritaires ACLED open source — TOUJOURS inclure avec ocha_field_incidents pour les questions sur les incidents
 daily_updates: mises à jour quotidiennes OCHA envoyées au siège, incidents majeurs, situation sécuritaire
+access_perception: données de perception sur l'accès humanitaire par région et round d'enquête — sévérité perçue par les acteurs terrain
 admin1_regions: 17 régions, anciens/nouveaux noms
 admin2_provinces: 47 provinces
 admin3_communes: 351 communes
@@ -982,6 +990,15 @@ async function buildContext(question){
   if(isAll||hasTable('daily_updates')){
     const daily=await sb(`daily_updates?select=date,region_normalized,content&limit=30${rDaily}${yDaily}&order=date.desc`);
     if(daily.length){const rows=daily.map(r=>`  ${tag(r.content)}[${r.date}|${r.region_normalized}] ${(r.content||'').substring(0,200)}`).join('\n');parts.push(`=== MISES À JOUR TERRAIN [${daily.length}] ===\n${rows}`);}
+  }
+  // 6. ACCESS PERCEPTION
+  if(isAll||hasTable('access_perception')){
+    const yAcc=year
+      ?(shape==='trend'||shape==='narrative'?`&survey_date=gte.${year}-01-01`:`&survey_date=gte.${year}-01-01&survey_date=lte.${year}-12-31`)
+      :'';
+    const rAcc=region?`&region=ilike.*${encodeURIComponent(region)}*`:'';
+    const acc=await sb(`access_perception?select=survey_date,round,region,score,indicator,value&limit=200${rAcc}${yAcc}&order=survey_date.desc`);
+    if(acc.length){const rows=acc.map(r=>`  [${r.survey_date}|R${r.round}|${r.region}] ${r.indicator||''}${r.score!=null?': '+r.score:''}${r.value!=null?' ('+r.value+')':''}`).join('\n');parts.push(`=== PERCEPTION ACCÈS [${acc.length}] ===\n${rows}`);}
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${region?' (pour '+region+')':''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   return parts.join('\n\n');
