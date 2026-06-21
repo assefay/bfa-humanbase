@@ -665,7 +665,15 @@ const SHAPE_INSTRUCTIONS={
   trend:`PORTÉE: Question de TENDANCE. Présente l'évolution dans le temps (par semaine/mois/année). Indique la direction (hausse/baisse) et les périodes clés. N'invente aucune valeur intermédiaire.`,
   comparison:`PORTÉE: Question de COMPARAISON. Compare explicitement les entités ou périodes demandées avec des chiffres côte à côte, puis nomme laquelle est la plus/moins affectée. Si une entité manque de données, dis-le.`,
   gap:`PORTÉE: Question d'ÉCART (gap). Croise les deux jeux de données concernés (ex: alertes/besoins vs réponse) et identifie ce qui est présent d'un côté mais absent de l'autre. Liste les localités/régions concernées. Si la couverture ne peut être déterminée faute de données, dis-le clairement.`,
-  narrative:`PORTÉE: Question NARRATIVE / synthèse. Assemble un résumé structuré (contexte sécuritaire → déplacements → réponse → accès) à partir des champs disponibles. Reste fidèle aux données.`,
+  narrative:`PORTÉE: Question NARRATIVE / synthèse. Produis une réponse en DEUX PARTIES distinctes, séparées par un titre clair.
+
+PARTIE 1 — « Données et faits »
+Présentation structurée des faits à partir des champs disponibles : chiffres clés, tableaux, listes par thème (contexte sécuritaire → déplacements → réponse → accès). Utilise les VALEURS EXACTES des données fournies (nombres de communes, scores, populations) — ne jamais arrondir ni approximer le dénominateur. Cite la source de chaque bloc.
+
+PARTIE 2 — « Analyse »
+Rédige une analyse en PROSE CONTINUE, comme une note de synthèse OCHA. Phrases liées, paragraphes — AUCUN tableau, AUCune puce, AUCUN titre de section dans cette partie. Intègre les chiffres dans les phrases plutôt que de les lister. Construis un fil analytique : situation actuelle → facteurs explicatifs → trajectoire dans le temps → implications opérationnelles. Mentionne les sources avec parcimonie, en incise, pas après chaque phrase.
+
+Dans les deux parties : reste strictement fidèle aux données fournies. N'invente aucun chiffre.`,
   incident:`PORTÉE: Recherche d'INCIDENTS. Liste les événements correspondants (date, lieu, type, bilan) du plus récent au plus ancien. Ne fusionne pas et n'invente pas d'événements.`
 };
 
