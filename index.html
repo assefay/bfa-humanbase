@@ -991,14 +991,34 @@ async function buildContext(question){
     const daily=await sb(`daily_updates?select=date,region_normalized,content&limit=30${rDaily}${yDaily}&order=date.desc`);
     if(daily.length){const rows=daily.map(r=>`  ${tag(r.content)}[${r.date}|${r.region_normalized}] ${(r.content||'').substring(0,200)}`).join('\n');parts.push(`=== MISES À JOUR TERRAIN [${daily.length}] ===\n${rows}`);}
   }
-  // 6. ACCESS PERCEPTION
+  // 6. ACCESS PERCEPTION (scores de sévérité perçue, par commune/round)
   if(isAll||hasTable('access_perception')){
     const yAcc=year
-      ?(shape==='trend'||shape==='narrative'?`&survey_date=gte.${year}-01-01`:`&survey_date=gte.${year}-01-01&survey_date=lte.${year}-12-31`)
+      ?(shape==='trend'||shape==='narrative'||shape==='comparison'
+          ?`&survey_date=gte.${year}-01-01`
+          :`&survey_date=gte.${year}-01-01&survey_date=lte.${year}-12-31`)
       :'';
-    const rAcc=region?`&region=ilike.*${encodeURIComponent(region)}*`:'';
-    const acc=await sb(`access_perception?select=survey_date,round,region,score,indicator,value&limit=200${rAcc}${yAcc}&order=survey_date.desc`);
-    if(acc.length){const rows=acc.map(r=>`  [${r.survey_date}|R${r.round}|${r.region}] ${r.indicator||''}${r.score!=null?': '+r.score:''}${r.value!=null?' ('+r.value+')':''}`).join('\n');parts.push(`=== PERCEPTION ACCÈS [${acc.length}] ===\n${rows}`);}
+    const rAcc=region?`&adm1_region=ilike.*${encodeURIComponent(region)}*`:'';
+    const acc=await sb(`access_perception?select=survey_date,round,adm1_region,adm3_commune,score_national_ngo,score_international_ngo,score_un,score_average&limit=400${rAcc}${yAcc}&order=survey_date.desc`);
+    if(acc.length){
+      const rows=acc.map(r=>`  [${r.survey_date}|${r.round}|${r.adm1_region}/${r.adm3_commune}] ONGnat:${r.score_national_ngo??'-'} ONGI:${r.score_international_ngo??'-'} UN:${r.score_un??'-'} moy:${r.score_average??'-'}`).join('\n');
+      parts.push(`=== PERCEPTION ACCÈS — scores [${acc.length}] ===\n${rows}`);
+    }
+  }
+  // 6 bis. NARRATIFS ACCÈS (knowledge_base category=access_narrative)
+  if(isAll||hasTable('access_perception')){
+    const yNar=year
+      ?(shape==='trend'||shape==='narrative'||shape==='comparison'
+          ?`&valid_from=gte.${year}-01-01`
+          :`&valid_from=gte.${year}-01-01&valid_from=lte.${year}-12-31`)
+      :'';
+    const ents=region?`&entity_name=in.(national,${encodeURIComponent(region)})`
+                     :`&entity_name=eq.national`;
+    const nar=await sb(`knowledge_base?select=entity_name,attribute,value,valid_from&category=eq.access_narrative${ents}${yNar}&order=valid_from.desc&limit=40`);
+    if(nar.length){
+      const rows=nar.map(n=>`  [${n.attribute}|${n.entity_name}] ${n.value}`).join('\n\n');
+      parts.push(`=== NARRATIFS ACCÈS [${nar.length}] ===\n${rows}`);
+    }
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${region?' (pour '+region+')':''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   return parts.join('\n\n');
