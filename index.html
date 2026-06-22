@@ -731,13 +731,13 @@ function enforceSourcingRules(routerOutput) {
   if (tables.has('access_perception')) {
     enforced.push({ table: 'access_perception', rule: 'access_sourcing' });
   }
-  // Règle 3 : requête large / transversale
-  if (out.shape === 'narrative' && !out.region) {
+  // Règle 3 : requête narrative — sourcing transversal obligatoire
+  if (out.shape === 'narrative') {
     add('gcorr_alerts',         'broad_query');
     add('weekly_reports',       'broad_query');
-    add('daily_updates',        'broad_query');
     add('acled_incidents',      'broad_query');
     add('ocha_field_incidents', 'broad_query');
+    if (!out.region) add('daily_updates', 'broad_query');
   }
   out.tables = Array.from(tables);
   out._enforced = enforced;
