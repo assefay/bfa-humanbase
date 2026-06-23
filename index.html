@@ -437,6 +437,10 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
         <input class="sit-input" id="sitInput" placeholder="Ex: Quelles sont les zones enclavées en Soum en 2026 ?" oninput="this.setAttribute('data-val',this.value)" onkeydown="if(event.key==='Enter')runSituation()">
         <button type="button" class="btn-sit" id="sitBtn" onclick="runSituation()">Analyser →</button>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.82rem;color:rgba(255,255,255,.7);cursor:pointer">
+        <input type="checkbox" id="sitNarrativeChk" style="accent-color:#3FB950;width:14px;height:14px">
+        Inclure un récit de situation (peut prendre jusqu'à 2 min)
+      </label>
     </div>
   </div>
   <div id="sitResults" style="padding:12px 24px 24px;display:flex;flex-direction:column;gap:14px">
@@ -1238,17 +1242,31 @@ async function runSituation(){
   resEl.insertAdjacentHTML('afterbegin',`<div class="sit-res-card" id="${lid}"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Interrogation des données et de la base de connaissances...</div></div></div><div class="dots"><span></span><span></span><span></span></div></div>`);
   try{
     const context=await buildContext(question);
+    const withNarrative=document.getElementById('sitNarrativeChk').checked;
+    if(!withNarrative){
+      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,system:'Réponds de façon concise et factuelle en te basant uniquement sur les données fournies. Pas de récit narratif ni de format SitRep. Si utile, structure avec des points clés. Ne jamais inventer de chiffres.',messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const fastData=await fastResp.json();
+      const fastAnswer=fastData.content?.[0]?.text||(fastData.error?'⚠️ '+fastData.error.message:'Aucune réponse.');
+      const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Réponse rapide · ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(fastAnswer)}">${renderMD(fastAnswer)}</div></div>`;
+      btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
+      return;
+    }
     const systemPrompt=await buildSystemPrompt();
+    btn.textContent='Génération du récit en cours… (jusqu\'à 2 min)';
     console.time('[perf] 3-sonnet-synthesis');
-    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
-    const data=await resp.json();
-    console.timeEnd('[perf] 3-sonnet-synthesis');
-    const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
-    const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
-    document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div><div class="fb-zone" id="fbz-${lid}"><div class="fb-label">Évaluer cette réponse</div><div class="fb-btns"><button class="fb-btn score-5" onclick="selectRating(this,'${lid}',5,'Très bien')">Très bien</button><button class="fb-btn score-4" onclick="selectRating(this,'${lid}',4,'Bien')">Bien</button><button class="fb-btn score-3" onclick="selectRating(this,'${lid}',3,'Moyen')">Moyen</button><button class="fb-btn score-2" onclick="selectRating(this,'${lid}',2,'Mauvais')">Mauvais</button><button class="fb-btn score-1" onclick="selectRating(this,'${lid}',1,'Très mauvais')">Très mauvais</button></div><div class="fb-comment-row" id="fbcr-${lid}" style="display:none"><textarea class="fb-comment" id="fbcmt-${lid}" placeholder="Commentaire (optionnel)..."></textarea><button class="fb-send" onclick="saveFeedback('${lid}')">Envoyer →</button></div></div></div>`;
-  }catch(e){console.error('buildContext fail:',e&&e.message,e);document.getElementById(lid).outerHTML=`<div class="sit-res-card" style="border-left:4px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;}
-  btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
+    try{
+      const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const data=await resp.json();
+      console.timeEnd('[perf] 3-sonnet-synthesis');
+      const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+      const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
+      document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div><div class="fb-zone" id="fbz-${lid}"><div class="fb-label">Évaluer cette réponse</div><div class="fb-btns"><button class="fb-btn score-5" onclick="selectRating(this,'${lid}',5,'Très bien')">Très bien</button><button class="fb-btn score-4" onclick="selectRating(this,'${lid}',4,'Bien')">Bien</button><button class="fb-btn score-3" onclick="selectRating(this,'${lid}',3,'Moyen')">Moyen</button><button class="fb-btn score-2" onclick="selectRating(this,'${lid}',2,'Mauvais')">Mauvais</button><button class="fb-btn score-1" onclick="selectRating(this,'${lid}',1,'Très mauvais')">Très mauvais</button></div><div class="fb-comment-row" id="fbcr-${lid}" style="display:none"><textarea class="fb-comment" id="fbcmt-${lid}" placeholder="Commentaire (optionnel)..."></textarea><button class="fb-send" onclick="saveFeedback('${lid}')">Envoyer →</button></div></div></div>`;
+    }finally{
+      btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
+    }
+  }catch(e){console.error('buildContext fail:',e&&e.message,e);document.getElementById(lid).outerHTML=`<div class="sit-res-card" style="border-left:4px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;btn.disabled=false;btn.textContent='Analyser →';}
 }
 
 const USERS={Assefa:'OCHA2026',Claude:'OCHA2026',Barry:'OCHA2026'};
