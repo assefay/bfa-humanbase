@@ -1244,9 +1244,12 @@ async function runSituation(){
     const context=await buildContext(question);
     const withNarrative=document.getElementById('sitNarrativeChk').checked;
     if(!withNarrative){
-      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Réponds de façon concise et factuelle en te basant uniquement sur les données fournies. Pas de récit narratif ni de format SitRep. Si utile, structure avec des points clés. Ne jamais inventer de chiffres.',messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Tu fournis UNIQUEMENT une réponse factuelle directe basée exclusivement sur les données fournies. Donne les chiffres, dates, lieux et sources pertinents. INTERDIT: aucune section d\'analyse, aucune partie narrative, aucun format SitRep, aucune projection, aucune recommandation, aucune interprétation stratégique. Ne produis PAS de sections type \'PARTIE 1 / PARTIE 2 / Analyse\'. Structure en points clés courts si utile. Ne jamais inventer de chiffres — si une donnée est absente, dis-le.',messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
       const fastData=await fastResp.json();
-      const fastAnswer=fastData.content?.[0]?.text||(fastData.error?'⚠️ '+fastData.error.message:'Aucune réponse.');
+      let fastAnswer=fastData.content?.[0]?.text||(fastData.error?'⚠️ '+fastData.error.message:'Aucune réponse.');
+      const cutRx=/^(?:[#\-*]+\s*)?PARTIE\s+(?:2|II)\b/im;
+      const cutIdx=fastAnswer.search(cutRx);
+      if(cutIdx>0)fastAnswer=fastAnswer.slice(0,cutIdx).trimEnd();
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Réponse rapide · ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(fastAnswer)}">${renderMD(fastAnswer)}</div></div>`;
       btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
