@@ -1244,7 +1244,7 @@ async function runSituation(){
     const context=await buildContext(question);
     const withNarrative=document.getElementById('sitNarrativeChk').checked;
     if(!withNarrative){
-      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,system:'Réponds de façon concise et factuelle en te basant uniquement sur les données fournies. Pas de récit narratif ni de format SitRep. Si utile, structure avec des points clés. Ne jamais inventer de chiffres.',messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:'Réponds de façon concise et factuelle en te basant uniquement sur les données fournies. Pas de récit narratif ni de format SitRep. Si utile, structure avec des points clés. Ne jamais inventer de chiffres.',messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
       const fastData=await fastResp.json();
       const fastAnswer=fastData.content?.[0]?.text||(fastData.error?'⚠️ '+fastData.error.message:'Aucune réponse.');
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
