@@ -715,7 +715,7 @@ async function loadKnowledge(entityName){
   return`=== BASE DE CONNAISSANCES CONTEXTUELLE ===\n${lines.join('\n')}`;
 }
 
-function enforceSourcingRules(routerOutput) {
+function enforceSourcingRules(routerOutput, query) {
   const out = { ...routerOutput };
   const tables = new Set(out.tables || []);
   const enforced = [];
@@ -743,6 +743,14 @@ function enforceSourcingRules(routerOutput) {
     add('ocha_field_incidents', 'broad_query');
     if (!out.region) add('daily_updates', 'broad_query');
   }
+  // Règle 4 : HPC sévérité / PIN
+  const q = (query || '').toLowerCase();
+  if (/hotspot|hotspots|sévérité|severite|critique|criticité|zones critiques|gravité|jiaf|plus critiques|plus graves/.test(q)) {
+    add('hpc_severity', 'rule4-severity');
+  }
+  if (/personnes dans le besoin|dans le besoin|population dans le besoin|besoins par province|ampleur|cibles?|\bpin\b/.test(q)) {
+    add('hpc_pin', 'rule4-pin');
+  }
   out.tables = Array.from(tables);
   out._enforced = enforced;
   return out;
@@ -766,7 +774,9 @@ access_perception: données de perception sur l'accès humanitaire par région e
 admin1_regions: 17 régions, anciens/nouveaux noms
 admin2_provinces: 47 provinces
 admin3_communes: 351 communes
-capitals: chefs-lieux régions/provinces/communes`;
+capitals: chefs-lieux régions/provinces/communes
+hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par cluster et sévérité intersectorielle (INTERSECTOR = signal hotspot/criticité). Pour questions sur zones critiques, hotspots, sévérité, gravité des besoins.
+hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -798,7 +808,7 @@ capitals: chefs-lieux régions/provinces/communes`;
       shape: parsed.shape && SHAPE_INSTRUCTIONS[parsed.shape] ? parsed.shape : shapeSeed,
       place: place,   // {name, level, region} | null — for precise scope reporting
       reason: parsed.reason || ''
-    });
+    }, question);
     if (routerOut._enforced.length > 0) {
       console.log('[sourcing] tables ajoutées par règles déterministes:', routerOut._enforced);
     }
@@ -1033,6 +1043,44 @@ async function buildContext(question){
     if(nar.length){
       const rows=nar.map(n=>`  [${n.attribute}|${n.entity_name}] ${n.value}`).join('\n\n');
       parts.push(`=== NARRATIFS ACCÈS [${nar.length}] ===\n${rows}`);
+    }
+  }
+  // 7. HPC SÉVÉRITÉ JIAF 2026
+  if(isAll||hasTable('hpc_severity')){
+    const rSev=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
+    const inter=await sb(`hpc_severity?select=adm1,adm2,severity&hpc_cycle=eq.2026&dimension_name=eq.INTERSECTOR${rSev}&order=severity.desc&limit=100`);
+    if(inter.length){
+      const rows=inter.map(r=>`  [${r.adm1}/${r.adm2}] sévérité intersectorielle: ${r.severity}`).join('\n');
+      const dist={};
+      inter.forEach(r=>{dist[r.severity]=(dist[r.severity]||0)+1;});
+      const distLine=[5,4,3,2,1].filter(s=>dist[s]).map(s=>`sévérité ${s}: ${dist[s]} province(s)`).join(' · ');
+      parts.push(`=== SÉVÉRITÉ JIAF INTERSECTORIELLE — HPC 2026 [${inter.length}] (source: JIAF HPC 2026) ===\nClassement des provinces par sévérité intersectorielle (1=minimal, 5=catastrophique). Signal hotspot/criticité.\nRÉPARTITION EXACTE (calculée): ${distLine}\n${rows}`);
+    }else{gaps.push('Sévérité JIAF HPC 2026');parts.push(`=== SÉVÉRITÉ JIAF — HPC 2026 ===\nAucune donnée de sévérité${region?' pour '+region:''}.`);}
+    if(region){
+      const cl=await sb(`hpc_severity?select=adm2,dimension_name,severity&hpc_cycle=eq.2026&cluster_level=eq.cluster${rSev}&order=severity.desc&limit=200`);
+      if(cl.length){
+        const rows=cl.map(r=>`  [${r.adm2}] ${r.dimension_name}: ${r.severity}`).join('\n');
+        parts.push(`=== SÉVÉRITÉ PAR CLUSTER — HPC 2026 [${cl.length}] ===\n${rows}`);
+      }
+    }
+  }
+  // 8. HPC PIN / CIBLE 2026
+  if(isAll||hasTable('hpc_pin')){
+    const rPin=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
+    if(region){
+      const pin=await sb(`hpc_pin?select=adm2,cluster,cluster_level,population_group,figure_type,figure_value&hpc_cycle=eq.2026${rPin}&order=cluster.asc&limit=600`);
+      if(pin.length){
+        const rows=pin.map(r=>`  [${r.adm2}] ${r.cluster}(${r.cluster_level})/${r.population_group}/${r.figure_type}: ${fmtNum(r.figure_value)}`).join('\n');
+        parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [${pin.length}] (source: HPC 2026) ===\nRÈGLE: total = lignes cluster=intersectoral; ne jamais additionner les clusters sectoriels.\n${rows}`);
+      }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN pour ${region}.`);}
+    }else{
+      const pin=await sb(`hpc_pin?select=adm1,adm2,population_group,figure_type,figure_value&hpc_cycle=eq.2026&cluster=eq.intersectoral&population_group=eq.total&order=figure_value.desc&limit=200`);
+      if(pin.length){
+        const byProv={};
+        pin.forEach(r=>{byProv[r.adm2]=byProv[r.adm2]||{adm1:r.adm1};byProv[r.adm2][r.figure_type]=r.figure_value;});
+        const rows=Object.entries(byProv).map(([p,v])=>`  [${v.adm1}/${p}] PIN intersectoriel: ${fmtNum(v.pin||0)} · cible: ${fmtNum(v.target||0)}`).join('\n');
+        parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 [${Object.keys(byProv).length}] (source: HPC 2026) ===\nPIN et cible intersectoriels (dédupliqués JIAF) par province. Total national = somme de ces valeurs.\n${rows}`);
+      }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
     }
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${region?' (pour '+region+')':''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
