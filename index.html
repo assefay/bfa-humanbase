@@ -756,6 +756,20 @@ function enforceSourcingRules(routerOutput, query) {
   return out;
 }
 
+function enforceTerminologyRules(text) {
+  const corrections = [];
+  const pibPattern = /\bPIB\b/g;
+  if (pibPattern.test(text)) {
+    const count = (text.match(pibPattern) || []).length;
+    text = text.replace(pibPattern, 'PIN');
+    corrections.push({ rule: 'PIB→PIN', count });
+  }
+  if (corrections.length > 0) {
+    console.warn('[enforceTerminologyRules] corrections applied:', corrections);
+  }
+  return { text, corrections };
+}
+
 // ══ AI ROUTER ════════════════════════════════════════════════════════════════
 
 async function routeQuery(question) {
@@ -1251,7 +1265,8 @@ async function runQuery(){
     const context=await buildContext(question);
     const systemPrompt=await buildSystemPrompt();
     const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
-    const data=await resp.json();const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+    const data=await resp.json();let answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+    answer = enforceTerminologyRules(answer).text;
     const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const shapeLabel={status:'Statut',trend:'Tendance',comparison:'Comparaison',gap:'Écart/Gap',narrative:'Synthèse',incident:'Incidents'}[intent.shape]||'Statut';
     const placeLabel=intent.place?`${intent.place.name} (${intent.place.level==='region'?'région':intent.place.level==='province'?'province':'commune'})`:(intent.region||'national');
@@ -1271,7 +1286,8 @@ async function generateReport(){
   try{
     const context=await buildContext(question);
     const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:`Rédacteur OCHA Burkina Faso. Rapports sur données réelles uniquement. Ne jamais inventer de chiffres. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan.`,messages:[{role:'user',content:`${context}\n\nDEMANDE: ${question}`}]})});
-    const data=await resp.json();const text=data.content?.[0]?.text||'';
+    const data=await resp.json();let text=data.content?.[0]?.text||'';
+    text = enforceTerminologyRules(text).text;
     const labels={weekly:'Synthèse hebdo',monthly:'Narrative mensuelle',sitrep:'SitRep',security:'Rapport sécurité',displacement:'Rapport déplacement',donor:'Résumé donateur'};
     const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
     document.getElementById(lid).outerHTML=`<div class="res-card"><div class="res-meta"><div class="res-icon">📄</div><div><div class="res-title">${labels[type]} · ${region!=='all'?region:'National'} · ${period}</div><div class="res-time">${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button><button class="btn-print" onclick="printRes(this)">Imprimer</button></div><div class="res-body" data-raw="${encodeURIComponent(text)}">${renderMD(text)}</div></div>`;
@@ -1298,6 +1314,7 @@ async function runSituation(){
       const cutRx=/^(?:[#\-*]+\s*)?PARTIE\s+(?:2|II)\b/im;
       const cutIdx=fastAnswer.search(cutRx);
       if(cutIdx>0)fastAnswer=fastAnswer.slice(0,cutIdx).trimEnd();
+      fastAnswer = enforceTerminologyRules(fastAnswer).text;
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Réponse rapide · ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(fastAnswer)}">${renderMD(fastAnswer)}</div></div>`;
       btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
@@ -1310,7 +1327,8 @@ async function runSituation(){
       const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
       const data=await resp.json();
       console.timeEnd('[perf] 3-sonnet-synthesis');
-      const answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+      let answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
+      answer = enforceTerminologyRules(answer).text;
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
       document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div><div class="fb-zone" id="fbz-${lid}"><div class="fb-label">Évaluer cette réponse</div><div class="fb-btns"><button class="fb-btn score-5" onclick="selectRating(this,'${lid}',5,'Très bien')">Très bien</button><button class="fb-btn score-4" onclick="selectRating(this,'${lid}',4,'Bien')">Bien</button><button class="fb-btn score-3" onclick="selectRating(this,'${lid}',3,'Moyen')">Moyen</button><button class="fb-btn score-2" onclick="selectRating(this,'${lid}',2,'Mauvais')">Mauvais</button><button class="fb-btn score-1" onclick="selectRating(this,'${lid}',1,'Très mauvais')">Très mauvais</button></div><div class="fb-comment-row" id="fbcr-${lid}" style="display:none"><textarea class="fb-comment" id="fbcmt-${lid}" placeholder="Commentaire (optionnel)..."></textarea><button class="fb-send" onclick="saveFeedback('${lid}')">Envoyer →</button></div></div></div>`;
