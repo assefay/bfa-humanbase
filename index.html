@@ -620,6 +620,40 @@ function normalizeRegionName(name){
   return oldToNew[n] || null;
 }
 
+const OLD_TO_NEW_REGIONS = {
+  'boucle du mouhoun': ['Bankui', 'Sourou'],
+  'est':               ['Sirba', 'Goulmou', 'Tapoa'],
+  'sahel':             ['Liptako', 'Soum'],
+  'centre':            ['Kadiogo'],
+  'cascades':          ['Tannounyan'],
+  'centre-est':        ['Nakambé'],
+  'centre-nord':       ['Koulsé'],
+  'centre-ouest':      ['Nando'],
+  'centre-sud':        ['Nazinon'],
+  'hauts-bassins':     ['Guiriko'],
+  'nord':              ['Yaadga'],
+  'plateau-central':   ['Oubri'],
+  'sud-ouest':         ['Djôrô'],
+};
+
+const CURRENT_REGIONS = ['Bankui','Djôrô','Goulmou','Guiriko','Kadiogo','Koulsé',
+  'Liptako','Nakambé','Nando','Nazinon','Oubri','Sirba','Soum','Sourou',
+  'Tannounyan','Tapoa','Yaadga'];
+
+function stripAccentsLower(s) {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function resolveRegionToCurrent(name) {
+  const key = stripAccentsLower(name);
+  const current = CURRENT_REGIONS.find(r => stripAccentsLower(r) === key);
+  if (current) return [current];
+  if (OLD_TO_NEW_REGIONS[key]) return OLD_TO_NEW_REGIONS[key].slice();
+  const keyHyphen = key.replace(/\s+/g, '-');
+  if (OLD_TO_NEW_REGIONS[keyHyphen]) return OLD_TO_NEW_REGIONS[keyHyphen].slice();
+  return [];
+}
+
 // Resolve a place from the question.
 // Priority: region → province → commune, UNLESS the user explicitly qualifies
 // the level (e.g. "province du Soum" → province; "commune de ..." → commune).
@@ -741,7 +775,7 @@ function enforceSourcingRules(routerOutput, query) {
     add('weekly_reports',       'broad_query');
     add('acled_incidents',      'broad_query');
     add('ocha_field_incidents', 'broad_query');
-    if (!out.region) add('daily_updates', 'broad_query');
+    if (!out.regions || out.regions.length === 0) add('daily_updates', 'broad_query');
   }
   // Règle 4 : HPC sévérité / PIN
   const q = (query || '').toLowerCase();
@@ -799,7 +833,7 @@ hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 p
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 500,
-        messages: [{role: 'user', content: `Tables disponibles:\n${TABLE_INDEX}\n\nQuestion: "${question}"\n\nRéponds UNIQUEMENT avec JSON valide:\n{"tables":["table1"],"region":"null_ou_nom","year":"null_ou_annee","shape":"status|trend|comparison|gap|narrative|incident","reason":"une phrase courte max 15 mots"}\nRÈGLES: (1) Si la question ne mentionne PAS explicitement une région, province ou commune spécifique du Burkina Faso → region DOIT être null. (2) Si la question compare des régions ou demande laquelle est la plus affectée → region null. (3) Ne pas déduire une région depuis des mots généraux comme "difficile", "accès", "national", "pays" → region null. (4) shape — choisis selon l'INTENTION, pas selon le nombre de lieux :\n    "status"   = demande factuelle ponctuelle : un chiffre, un niveau, un décompte, un statut précis (ex: "combien de…", "quel niveau d'accès à…", "y a-t-il…").\n    "narrative"= demande de SYNTHÈSE ou d'APPRÉCIATION de situation, qu'elle porte sur le pays OU sur un lieu précis (ex: "quelle est la situation de…", "analyse de…", "aperçu de…", "fais le point sur…"). Un lieu nommé n'empêche PAS narrative.\n    "trend"    = évolution dans le temps.\n    "comparison"= comparer lieux ou périodes.\n    "gap"      = écart entre deux dimensions.\n    "incident" = liste d'événements.\n    Départage status/narrative : si la réponse utile tient en un chiffre ou une phrase → status ; si elle demande une appréciation construite → narrative.`}]
+        messages: [{role: 'user', content: `Tables disponibles:\n${TABLE_INDEX}\n\nQuestion: "${question}"\n\nRéponds UNIQUEMENT avec JSON valide:\n{"tables":["table1"],"regions":[],"year":"null_ou_annee","shape":"status|trend|comparison|gap|narrative|incident","reason":"une phrase courte max 15 mots"}\nRÈGLES: (1) regions — liste TOUS les noms de lieux cités dans la question (régions, provinces, communes du Burkina Faso). Recopie les noms tels qu'ils apparaissent dans la question. Si aucun lieu cité → []. Si un seul → ["Nom"]. Si plusieurs → ["Nom1","Nom2",...]. Toujours un tableau JSON, jamais null. (2) shape — choisis selon l'INTENTION, pas selon le nombre de lieux :\n    "status"   = demande factuelle ponctuelle : un chiffre, un niveau, un décompte, un statut précis (ex: "combien de…", "quel niveau d'accès à…", "y a-t-il…").\n    "narrative"= demande de SYNTHÈSE ou d'APPRÉCIATION de situation, qu'elle porte sur le pays OU sur un lieu précis (ex: "quelle est la situation de…", "analyse de…", "aperçu de…", "fais le point sur…"). Un lieu nommé n'empêche PAS narrative.\n    "trend"    = évolution dans le temps.\n    "comparison"= comparer lieux ou périodes.\n    "gap"      = écart entre deux dimensions.\n    "incident" = liste d'événements.\n    Départage status/narrative : si la réponse utile tient en un chiffre ou une phrase → status ; si elle demande une appréciation construite → narrative.`}]
       })
     });
     const data = await resp.json();
@@ -807,17 +841,28 @@ hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 p
     console.log('Router raw response:', text);
     const parsed = JSON.parse(text);
     console.log('Router parsed:', parsed);
-    // Normalize any AI-supplied region through old→new mapping (handles "Sahel" → null because ambiguous split)
-    const aiRegion = normalizeRegionName(parsed.region);
-    // PRECEDENCE: deterministic resolver wins (it knows commune/province→region with certainty),
-    // then normalized AI region, then heuristic. The AI often guesses old/ambiguous names.
-    const filterRegion = (place ? place.region : null)
-                      || aiRegion
-                      || region
-                      || null;
+    const rawRegions = Array.isArray(parsed.regions) ? parsed.regions : [];
+    const unrecognizedRegions = [];
+    let resolvedRegions = rawRegions.flatMap(name => {
+      const r = resolveRegionToCurrent(name);
+      if (r.length === 0) unrecognizedRegions.push(name);
+      return r;
+    });
+    resolvedRegions = [...new Set(resolvedRegions)];
+    if (resolvedRegions.length === 0) {
+      const fallbackName = (place ? place.region : null) || region || null;
+      if (fallbackName) {
+        const r = resolveRegionToCurrent(fallbackName);
+        if (r.length > 0) resolvedRegions = r;
+      }
+    }
+    console.log('[router] regions:', {raw: rawRegions, resolved: resolvedRegions, unrecognized: unrecognizedRegions});
+    const filterRegion = resolvedRegions[0] || null;
     const routerOut = enforceSourcingRules({
       tables: parsed.tables || [],
       region: filterRegion,
+      regions: resolvedRegions,
+      unrecognizedRegions,
       year: parsed.year && parsed.year !== 'null' ? parsed.year : year,
       shape: parsed.shape && SHAPE_INSTRUCTIONS[parsed.shape] ? parsed.shape : shapeSeed,
       place: place,   // {name, level, region} | null — for precise scope reporting
@@ -839,11 +884,15 @@ hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 p
       access:['weekly_reports','zone_enclavees'],
       zones:['zone_enclavees']
     };
+    const fallbackRegSrc = place ? place.region : region;
+    const fallbackRegions = fallbackRegSrc ? resolveRegionToCurrent(fallbackRegSrc) : [];
     return {
-      tables: isAll 
+      tables: isAll
         ? ['zone_enclavees','gcorr_alerts','weekly_reports','ocha_field_incidents','acled_incidents','daily_updates']
         : [...new Set(topics.flatMap(t => baseTopicMap[t]||[]))],
-      region: place ? place.region : region,
+      region: fallbackRegions[0] || fallbackRegSrc || null,
+      regions: fallbackRegions,
+      unrecognizedRegions: [],
       year,
       shape: shapeSeed,
       place: place,
@@ -864,6 +913,7 @@ async function buildContext(question){
   const tables = route.tables;
   const shape = route.shape || 'status';
   const place = route.place || null;
+  console.log('[diag] buildContext — region:', region, '| place:', place);
   // If the user asked about a sub-region unit (commune/province), tag rows that mention it.
   const commName = (place && place.level!=='region') ? place.name : null;
   const tag = (...fields)=> commName && _mentionsPlace(commName, ...fields) ? '📍 ' : '';
@@ -872,16 +922,11 @@ async function buildContext(question){
   const gaps = []; // datasets with no data for the requested scope
 
   const parts=[];
-  const rStd=region?`&region=ilike.*${encodeURIComponent(region)}*`:'';
-  const yStd=year?`&report_period=ilike.*${year}*`:'';
-  const rGcorr=region?`&region_arrivee=eq.${encodeURIComponent(region)}`:'';
   const yGcorr=year?`&choc_year=eq.${year}`:'';
-  const rDaily=region?`&region_normalized=ilike.*${encodeURIComponent(region)}*`:'';
   const yDaily=year?`&date=gte.${year}-01-01&date=lte.${year}-12-31`:'';
-  const rZone=region?`&adm1_name=ilike.*${encodeURIComponent(region)}*`:'';
   const yZone=year?`&report_date=gte.${year}-01-01&report_date=lte.${year}-12-31`:'';
 
-  parts.push(`=== CONTEXTE DE LA REQUÊTE ===\nQuestion: "${question}"\nRégion: ${region||'toutes'}\nAnnée: ${year||'toutes'}\nTables interrogées: ${tables.join(', ')||'toutes'}\nRoutage IA: ${route.reason}\nINSTRUCTION: Utilise UNIQUEMENT les données ci-dessous, mais utilise TOUTES les données pertinentes présentes. Ne jamais inventer de chiffres. Si AU MOINS UNE source contient des données pertinentes, tu DOIS produire une réponse de fond — ne jamais répondre "données non disponibles" tant qu'une source utile est présente. L'absence d'une source (ex: GCORR) n'est pas l'absence de toutes les sources.${place&&place.level!=='region'?`\nLIEU PRÉCIS: La question porte sur ${place.name} (${place.level} de la région ${place.region}). Les lignes marquées "📍" mentionnent explicitement ${place.name}. STRUCTURE OBLIGATOIRE de ta réponse: (1) D'ABORD la situation à ${place.name} même, en t'appuyant sur les lignes 📍 et toute mention de ${place.name}. (2) ENSUITE, sous un intertitre distinct "Contexte régional (${place.region})", présente le reste comme contexte régional — et précise clairement que ces chiffres concernent l'ensemble de la région ${place.region}, PAS uniquement ${place.name}. Ne jamais présenter un total régional comme s'il concernait ${place.name}.`:''}`);
+  parts.push(`=== CONTEXTE DE LA REQUÊTE ===\nQuestion: "${question}"\nRégion: ${route.regions && route.regions.length ? route.regions.join(', ') : 'toutes'}\nAnnée: ${year||'toutes'}\nTables interrogées: ${tables.join(', ')||'toutes'}\nRoutage IA: ${route.reason}\nINSTRUCTION: Utilise UNIQUEMENT les données ci-dessous, mais utilise TOUTES les données pertinentes présentes. Ne jamais inventer de chiffres. Si AU MOINS UNE source contient des données pertinentes, tu DOIS produire une réponse de fond — ne jamais répondre "données non disponibles" tant qu'une source utile est présente. L'absence d'une source (ex: GCORR) n'est pas l'absence de toutes les sources.${place&&place.level!=='region'?`\nLIEU PRÉCIS: La question porte sur ${place.name} (${place.level} de la région ${place.region}). Les lignes marquées "📍" mentionnent explicitement ${place.name}. STRUCTURE OBLIGATOIRE de ta réponse: (1) D'ABORD la situation à ${place.name} même, en t'appuyant sur les lignes 📍 et toute mention de ${place.name}. (2) ENSUITE, sous un intertitre distinct "Contexte régional (${place.region})", présente le reste comme contexte régional — et précise clairement que ces chiffres concernent l'ensemble de la région ${place.region}, PAS uniquement ${place.name}. Ne jamais présenter un total régional comme s'il concernait ${place.name}.`:''}`);
 
   // Resolved place (admin level) + question shape — tells the model what to compute
   const placeLine = place
@@ -892,6 +937,28 @@ async function buildContext(question){
   // Knowledge base — always load for zone queries, load all for general
   const kbContext=await loadKnowledge(null);
   if(kbContext)parts.push(kbContext);
+
+  // 6 bis. NARRATIFS ACCÈS (knowledge_base category=access_narrative)
+  if(isAll||hasTable('access_perception')){
+    const yNar=year
+      ?(shape==='trend'||shape==='narrative'||shape==='comparison'
+          ?`&valid_from=gte.${year}-01-01`
+          :`&valid_from=gte.${year}-01-01&valid_from=lte.${year}-12-31`)
+      :'';
+    const ents=region?`&entity_name=in.(national,${encodeURIComponent(region)})`
+                     :`&entity_name=eq.national`;
+    const nar=await sb(`knowledge_base?select=entity_name,attribute,value,valid_from&category=eq.access_narrative${ents}${yNar}&order=valid_from.desc&limit=40`);
+    if(nar.length){
+      const rows=nar.map(n=>`  [${n.attribute}|${n.entity_name}] ${n.value}`).join('\n\n');
+      parts.push(`=== NARRATIFS ACCÈS [${nar.length}] ===\n${rows}`);
+    }
+  }
+
+  for (const region of route.regions) {
+    parts.push('=== RÉGION: ' + region + ' ===');
+    const rZone=`&adm1_name=ilike.*${encodeURIComponent(region)}*`;
+    const rGcorr=`&region_arrivee=eq.${encodeURIComponent(region)}`;
+    const rDaily=`&region_normalized=ilike.*${encodeURIComponent(region)}*`;
 
   // ZONE ENCLAVEES
   if(isAll||hasTable('zone_enclavees')){
@@ -1023,12 +1090,12 @@ async function buildContext(question){
       const tS=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${t}(${n})`).join(', ');
       const rows=acled.map(r=>`  ${tag(r.adm2_name,r.acled_admin3,r.notes,r.location)}[${r.event_date}|${r.adm1_name}/${r.adm2_name}] ${r.event_type} — ${r.actor1||'?'}${r.actor2?' vs '+r.actor2:''} · ${r.fatalities||0} victimes${r.civilian_targeting?' (civils ciblés)':''}`).join('\n');
       parts.push(`=== INCIDENTS ACLED [${acled.length}] ===\nRÉSUMÉ: ${acled.length} événements · ${totF} victimes · Types: ${tS}\nDÉTAIL:\n${rows}`);
-    }
+    }else{gaps.push('Incidents ACLED');parts.push(`=== INCIDENTS ACLED ===\nAucun événement ACLED${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
   // 5. DAILY UPDATES
   if(isAll||hasTable('daily_updates')){
     const daily=await sb(`daily_updates?select=date,region_normalized,content&limit=30${rDaily}${yDaily}&order=date.desc`);
-    if(daily.length){const rows=daily.map(r=>`  ${tag(r.content)}[${r.date}|${r.region_normalized}] ${(r.content||'').substring(0,200)}`).join('\n');parts.push(`=== MISES À JOUR TERRAIN [${daily.length}] ===\n${rows}`);}
+    if(daily.length){const rows=daily.map(r=>`  ${tag(r.content)}[${r.date}|${r.region_normalized}] ${(r.content||'').substring(0,200)}`).join('\n');parts.push(`=== MISES À JOUR TERRAIN [${daily.length}] ===\n${rows}`);}else{gaps.push('Mises à jour terrain');parts.push(`=== MISES À JOUR TERRAIN ===\nAucune mise à jour${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
   // 6. ACCESS PERCEPTION (scores de sévérité perçue, par commune/round)
   if(isAll||hasTable('access_perception')){
@@ -1042,26 +1109,12 @@ async function buildContext(question){
     if(acc.length){
       const rows=acc.map(r=>`  [${r.survey_date}|${r.round}|${r.adm1_region}/${r.adm3_commune}] ONGnat:${r.score_national_ngo??'-'} ONGI:${r.score_international_ngo??'-'} UN:${r.score_un??'-'} moy:${r.score_average??'-'}`).join('\n');
       parts.push(`=== PERCEPTION ACCÈS — scores [${acc.length}] ===\n${rows}`);
-    }
-  }
-  // 6 bis. NARRATIFS ACCÈS (knowledge_base category=access_narrative)
-  if(isAll||hasTable('access_perception')){
-    const yNar=year
-      ?(shape==='trend'||shape==='narrative'||shape==='comparison'
-          ?`&valid_from=gte.${year}-01-01`
-          :`&valid_from=gte.${year}-01-01&valid_from=lte.${year}-12-31`)
-      :'';
-    const ents=region?`&entity_name=in.(national,${encodeURIComponent(region)})`
-                     :`&entity_name=eq.national`;
-    const nar=await sb(`knowledge_base?select=entity_name,attribute,value,valid_from&category=eq.access_narrative${ents}${yNar}&order=valid_from.desc&limit=40`);
-    if(nar.length){
-      const rows=nar.map(n=>`  [${n.attribute}|${n.entity_name}] ${n.value}`).join('\n\n');
-      parts.push(`=== NARRATIFS ACCÈS [${nar.length}] ===\n${rows}`);
-    }
+    }else{gaps.push('Perception accès');parts.push(`=== PERCEPTION ACCÈS — scores ===\nAucune donnée de perception${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
   // 7. HPC SÉVÉRITÉ JIAF 2026
   if(isAll||hasTable('hpc_severity')){
     const rSev=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
+    console.log('[diag] HPC severity filter — rSev:', rSev, '| adm1 pattern:', region||'(none/national)');
     const inter=await sb(`hpc_severity?select=adm1,adm2,severity&hpc_cycle=eq.2026&dimension_name=eq.INTERSECTOR${rSev}&order=severity.desc&limit=100`);
     if(inter.length){
       const rows=inter.map(r=>`  [${r.adm1}/${r.adm2}] sévérité intersectorielle: ${r.severity}`).join('\n');
@@ -1078,26 +1131,29 @@ async function buildContext(question){
       }
     }
   }
-  // 8. HPC PIN / CIBLE 2026
+  // 8. HPC PIN / CIBLE 2026 — détail régional
   if(isAll||hasTable('hpc_pin')){
     const rPin=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
-    if(region){
-      const pin=await sb(`hpc_pin?select=adm2,cluster,cluster_level,population_group,figure_type,figure_value&hpc_cycle=eq.2026${rPin}&order=cluster.asc&limit=600`);
-      if(pin.length){
-        const rows=pin.map(r=>`  [${r.adm2}] ${r.cluster}(${r.cluster_level})/${r.population_group}/${r.figure_type}: ${fmtNum(r.figure_value)}`).join('\n');
-        parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [${pin.length}] (source: HPC 2026) ===\nRÈGLE: total = lignes cluster=intersectoral; ne jamais additionner les clusters sectoriels.\n${rows}`);
-      }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN pour ${region}.`);}
-    }else{
-      const pin=await sb(`hpc_pin?select=adm1,adm2,population_group,figure_type,figure_value&hpc_cycle=eq.2026&cluster=eq.intersectoral&population_group=eq.total&order=figure_value.desc&limit=200`);
-      if(pin.length){
-        const byProv={};
-        pin.forEach(r=>{byProv[r.adm2]=byProv[r.adm2]||{adm1:r.adm1};byProv[r.adm2][r.figure_type]=r.figure_value;});
-        const rows=Object.entries(byProv).map(([p,v])=>`  [${v.adm1}/${p}] PIN intersectoriel: ${fmtNum(v.pin||0)} · cible: ${fmtNum(v.target||0)}`).join('\n');
-        parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 [${Object.keys(byProv).length}] (source: HPC 2026) ===\nPIN et cible intersectoriels (dédupliqués JIAF) par province. Total national = somme de ces valeurs.\n${rows}`);
-      }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
-    }
+    console.log('[diag] HPC PIN filter — rPin:', rPin, '| adm1 pattern:', region||'(none/national)');
+    const pin=await sb(`hpc_pin?select=adm2,cluster,cluster_level,population_group,figure_type,figure_value&hpc_cycle=eq.2026${rPin}&order=cluster.asc&limit=600`);
+    if(pin.length){
+      const rows=pin.map(r=>`  [${r.adm2}] ${r.cluster}(${r.cluster_level})/${r.population_group}/${r.figure_type}: ${fmtNum(r.figure_value)}`).join('\n');
+      parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [${pin.length}] (source: HPC 2026) ===\nRÈGLE: total = lignes cluster=intersectoral; ne jamais additionner les clusters sectoriels.\n${rows}`);
+    }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN pour ${region}.`);}
   }
-  if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${region?' (pour '+region+')':''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
+  } // end per-region loop
+
+  // 8. HPC PIN / CIBLE 2026 — résumé national (portée nationale uniquement)
+  if((isAll||hasTable('hpc_pin')) && !(route.regions && route.regions.length > 0)){
+    const pin=await sb(`hpc_pin?select=adm1,adm2,population_group,figure_type,figure_value&hpc_cycle=eq.2026&cluster=eq.intersectoral&population_group=eq.total&order=figure_value.desc&limit=200`);
+    if(pin.length){
+      const byProv={};
+      pin.forEach(r=>{byProv[r.adm2]=byProv[r.adm2]||{adm1:r.adm1};byProv[r.adm2][r.figure_type]=r.figure_value;});
+      const rows=Object.entries(byProv).map(([p,v])=>`  [${v.adm1}/${p}] PIN intersectoriel: ${fmtNum(v.pin||0)} · cible: ${fmtNum(v.target||0)}`).join('\n');
+      parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 [${Object.keys(byProv).length}] (source: HPC 2026) ===\nPIN et cible intersectoriels (dédupliqués JIAF) par province. Total national = somme de ces valeurs.\n${rows}`);
+    }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
+  }
+  if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   console.timeEnd('[perf] 2-supabase-fetches');
   return parts.join('\n\n');
 }
