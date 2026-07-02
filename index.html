@@ -824,7 +824,8 @@ admin2_provinces: 47 provinces
 admin3_communes: 351 communes
 capitals: chefs-lieux régions/provinces/communes
 hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par cluster et sévérité intersectorielle (INTERSECTOR = signal hotspot/criticité). Pour questions sur zones critiques, hotspots, sévérité, gravité des besoins.
-hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.`;
+hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.
+hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -857,6 +858,19 @@ hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 p
       }
     }
     console.log('[router] regions:', {raw: rawRegions, resolved: resolvedRegions, unrecognized: unrecognizedRegions});
+    // Backstop déterministe : si resolvePlace/detectIntent ont trouvé une région
+    // que le routeur IA a perdue ou déformée, on la réintègre.
+    const detDetected = [];
+    if (place && place.region) detDetected.push(place.region);
+    if (region) detDetected.push(region);   // detectIntent result
+    for (const d of detDetected) {
+      for (const r of resolveRegionToCurrent(d)) {
+        if (!resolvedRegions.includes(r)) {
+          resolvedRegions.push(r);
+          console.log('[router] région réintégrée par le backstop déterministe:', r);
+        }
+      }
+    }
     const filterRegion = resolvedRegions[0] || null;
     const routerOut = enforceSourcingRules({
       tables: parsed.tables || [],
@@ -933,6 +947,9 @@ async function buildContext(question){
     ? `Lieu détecté: ${place.name} (niveau ${place.level==='region'?'région':place.level==='province'?'province':'commune'}${place.level!=='region'?`, région ${place.region}`:''})`
     : `Lieu détecté: aucun (portée nationale)`;
   parts.push(`=== PORTÉE ===\n${placeLine}\n${SHAPE_INSTRUCTIONS[shape]||SHAPE_INSTRUCTIONS.status}`);
+  if (route.unrecognizedRegions && route.unrecognizedRegions.length) {
+    parts.push(`=== ATTENTION ROUTAGE ===\nLe routeur a extrait ce(s) nom(s) non reconnu(s) comme région officielle: ${route.unrecognizedRegions.join(', ')}. Si la question mentionne une région dont les données semblent absentes, signale explicitement ce problème de reconnaissance dans ta réponse plutôt que de conclure à une absence de données.`);
+  }
 
   // Knowledge base — always load for zone queries, load all for general
   const kbContext=await loadKnowledge(null);
@@ -962,34 +979,18 @@ async function buildContext(question){
 
   // ZONE ENCLAVEES
   if(isAll||hasTable('zone_enclavees')){
-    const zones=await sb(`zone_enclavees?select=report_date,adm1_name,adm2_name,localite,niveau,statut,population_total,pdi,pop_non_deplacee${rZone}${yZone}&order=report_date.desc&limit=600`);
-    if(zones.length){
-      const latestDate=zones[0].report_date;
-      const latestZones=zones.filter(r=>r.report_date===latestDate);
-      const _seenZ=new Set();
-      const dedupZones=latestZones.filter(r=>{const k=`${r.localite}|${r.niveau}`;return _seenZ.has(k)?false:(_seenZ.add(k),true);});
-      const byDate={};
-      dedupZones.forEach(r=>{
-        const k=r.report_date;
-        byDate[k]=byDate[k]||{date:k,n1:{count:0,pop:0,pdi:0,nonDep:0,locs:[]},n2:{count:0,pop:0,pdi:0,nonDep:0,locs:[]},n3:{count:0,pop:0,pdi:0,nonDep:0,locs:[]}};
-        const nk=r.niveau===1?'n1':r.niveau===2?'n2':'n3';
-        byDate[k][nk].count++;
-        byDate[k][nk].pop+=(r.population_total||0);
-        byDate[k][nk].pdi+=(r.pdi||0);
-        byDate[k][nk].nonDep+=(r.pop_non_deplacee||0);
-        byDate[k][nk].locs.push(r.localite);
-      });
-      const summary=Object.values(byDate).sort((a,b)=>b.date.localeCompare(a.date)).map(d=>{
-        const totPop=d.n1.pop+d.n2.pop+d.n3.pop;
-        const totPdi=d.n1.pdi+d.n2.pdi+d.n3.pdi;
-        const totNonDep=d.n1.nonDep+d.n2.nonDep+d.n3.nonDep;
-        return `  [${d.date}] TOTAL: ${fmtNum(totPop)} personnes (PDI: ${fmtNum(totPdi)}, Non-déplacés: ${fmtNum(totNonDep)})\n`+
-          `    Zone difficile d'accès 1: ${d.n1.count} localités · ${fmtNum(d.n1.pop)} pers. (PDI: ${fmtNum(d.n1.pdi)}, Non-dép: ${fmtNum(d.n1.nonDep)}) · ${d.n1.locs.join(', ')}\n`+
-          `    Zone difficile d'accès 2: ${d.n2.count} localités · ${fmtNum(d.n2.pop)} pers. (PDI: ${fmtNum(d.n2.pdi)}, Non-dép: ${fmtNum(d.n2.nonDep)}) · ${d.n2.locs.join(', ')}\n`+
-          `    Zone difficile d'accès 3: ${d.n3.count} localités · ${fmtNum(d.n3.pop)} pers. (PDI: ${fmtNum(d.n3.pdi)}, Non-dép: ${fmtNum(d.n3.nonDep)}) · ${d.n3.locs.join(', ')}`;
-      }).join('\n');
-      parts.push(`=== ZONES DIFFICILES D'ACCÈS [${dedupZones.length} entrées · données du ${latestDate}] ===\n${summary}`);
-    }else{gaps.push("Zones difficiles d'accès");parts.push(`=== ZONES ENCLAVÉES ===\nAucune donnée${region?' pour '+region:''}${year?' en '+year:''}.`);}
+    const agg=await sb(`v_zones_summary?select=*&region=ilike.*${encodeURIComponent(region)}*`);
+    let loc=[];
+    if(agg.length){
+      loc=await sb(`zone_enclavees?select=localite,adm3_name,adm2_name,niveau,statut,population_total,pdi&adm1_name=ilike.*${encodeURIComponent(region)}*&report_date=eq.${agg[0].report_date}&order=niveau.desc,population_total.desc.nullslast&limit=60`);
+    }
+    console.log('[diag] zones view rows:', agg.length, '| localites:', loc.length);
+    if(agg.length){
+      const r=agg[0];
+      const resume=`  [RÉGION ${r.region} (TOTAL) — snapshot ${r.report_date}] ${fmtNum(r.localites)} localités · ${fmtNum(r.population_totale)} personnes (${fmtNum(r.pdi)} PDI, ${fmtNum(r.non_deplaces)} non-déplacés) — Niveau 1 (difficile d'accès): ${fmtNum(r.localites_niv1||0)} localités, ${fmtNum(r.pop_niv1||0)} pers. · Niveau 2 (assiégée): ${fmtNum(r.localites_niv2||0)} localités, ${fmtNum(r.pop_niv2||0)} pers. · Niveau 3 (inaccessible): ${fmtNum(r.localites_niv3||0)} localités, ${fmtNum(r.pop_niv3||0)} pers.`;
+      const listing=loc.map(l=>`  [Niv.${l.niveau}] ${l.localite} (${l.adm3_name||'?'}, ${l.adm2_name||'?'}): ${fmtNum(l.population_total||0)} pers.${l.pdi?' dont '+fmtNum(l.pdi)+' PDI':''}`).join('\n');
+      parts.push(`=== ZONES DIFFICILES D'ACCÈS — ${region} [précalculé, snapshot ${r.report_date}] (source: zone_enclavees) ===\nRÈGLE: totaux PRÉCALCULÉS du snapshot le plus récent — citer tels quels, ne jamais recompter. Terminologie officielle: Niveau 1 = Zone difficile d'accès 1, Niveau 2 = assiégée, Niveau 3 = inaccessible.\nAGRÉGATS:\n${resume}\nLOCALITÉS:\n${listing}`);
+    }else{gaps.push('Zones difficiles d\'accès');parts.push(`=== ZONES DIFFICILES D'ACCÈS ===\nAucune localité recensée pour ${region} au dernier snapshot.`);}
   }
 
   // 1. GCORR
@@ -1066,31 +1067,30 @@ async function buildContext(question){
 
   // 3. OCHA FIELD INCIDENTS
   if(isAll||hasTable('ocha_field_incidents')){
-    const rInc=region?`&region=ilike.*${encodeURIComponent(region)}*`:'';
-    const yInc=year?`&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31`:'';
-    const finc=await sb(`ocha_field_incidents?select=incident_date,week_start,region,location,incident_type,perpetrator,killed_civilians,killed_military,wounded,displaced_persons,description&order=incident_date.desc&limit=200${rInc}${yInc}`);
-    if(finc.length){
-      const totK=finc.reduce((s,r)=>s+(r.killed_civilians||0),0);
-      const totD=finc.reduce((s,r)=>s+(r.displaced_persons||0),0);
-      const byType={};finc.forEach(r=>{const k=r.incident_type||'?';byType[k]=(byType[k]||0)+1;});
-      const tS=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${t}(${n})`).join(', ');
-      const rows=finc.map(r=>`  ${tag(r.location,r.description)}[${r.incident_date||r.week_start}|${r.region}] ${r.incident_type||'?'} à ${r.location||'?'}${r.killed_civilians?' ⚠'+r.killed_civilians+' civils tués':''}${r.displaced_persons?' 🔴'+fmtNum(r.displaced_persons)+' déplacés':''}: ${(r.description||'').substring(0,120)}`).join('\n');
-      parts.push(`=== INCIDENTS TERRAIN OCHA [${finc.length}] ===\nRÉSUMÉ: ${finc.length} incidents · ${totK} civils tués · ${fmtNum(totD)} déplacés · Types: ${tS}\nDÉTAIL:\n${rows}`);
-    }else{gaps.push('Incidents terrain OCHA');parts.push(`=== INCIDENTS TERRAIN OCHA ===\nAucun incident${region?' pour '+region:''}${year?' en '+year:''}.`);}
+    const yr = route.year && route.year!=='null' ? route.year : '2026';
+    const agg=await sb(`v_ocha_incidents_summary?select=*&region=ilike.*${encodeURIComponent(region)}*&annee=eq.${yr}`);
+    const rec=await sb(`ocha_field_incidents?select=incident_date,adm3_commune,location,incident_type,perpetrator,killed_civilians,wounded,displaced_persons,description&region=ilike.*${encodeURIComponent(region)}*&incident_date=gte.${yr}-01-01&incident_date=lte.${yr}-12-31&order=incident_date.desc&limit=8`);
+    console.log('[diag] ocha incidents view rows:', agg.length, '| recents:', rec.length);
+    if(agg.length){
+      const rows=agg.map(r=>`  [RÉGION ${r.region} (TOTAL)] ${r.annee}: ${fmtNum(r.incidents)} incidents — ${fmtNum(r.civils_tues)} civils tués · ${fmtNum(r.blesses)} blessés · ${fmtNum(r.deplaces_rapportes)} déplacés rapportés — attaques armées ${fmtNum(r.attaques_armees)} · EEI ${fmtNum(r.eei)} · enlèvements ${fmtNum(r.enlevements)} · déplacements ${fmtNum(r.deplacements)} · pillages ${fmtNum(r.pillages)} · autres ${fmtNum(r.autres)} · période ${r.premier_incident}→${r.dernier_incident}`).join('\n');
+      const recents=rec.map(r=>`  ${r.incident_date} [${r.adm3_commune||'?'}/${r.location||'?'}] ${r.incident_type} — ${r.perpetrator||'auteur inconnu'} — ${fmtNum(r.killed_civilians||0)} civils tués, ${fmtNum(r.wounded||0)} blessés${r.displaced_persons?', '+fmtNum(r.displaced_persons)+' déplacés':''} — ${(r.description||'').substring(0,220)}`).join('\n');
+      parts.push(`=== INCIDENTS TERRAIN OCHA ${yr} — ${region} [précalculé] (source: rapports hebdomadaires OCHA) ===\nRÈGLE: totaux PRÉCALCULÉS — citer tels quels, ne jamais recompter. Source terrain complémentaire d'ACLED (méthodologies différentes, ne pas fusionner les totaux). Les 8 incidents récents sont des EXEMPLES.\nAGRÉGATS:\n${rows}\nINCIDENTS RÉCENTS (8 derniers):\n${recents}`);
+    }else{gaps.push(`Incidents terrain OCHA ${yr}`);parts.push(`=== INCIDENTS TERRAIN OCHA ===\nAucun incident terrain ${yr} pour ${region}.`);}
   }
 
   // 4. ACLED INCIDENTS
-  if(hasTable('acled_incidents')){
-    const rAcled=region?`&adm1_name=ilike.*${encodeURIComponent(region)}*`:'';
-    const yAcled=year?`&year=eq.${year}`:'';
-    const acled=await sb(`acled_incidents?select=event_date,adm1_name,adm2_name,acled_admin3,event_type,sub_event_type,actor1,actor2,fatalities,civilian_targeting,notes&order=event_date.desc&limit=200${rAcled}${yAcled}`);
-    if(acled.length){
-      const totF=acled.reduce((s,r)=>s+(r.fatalities||0),0);
-      const byType={};acled.forEach(r=>{const k=r.event_type||'?';byType[k]=(byType[k]||0)+1;});
-      const tS=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${t}(${n})`).join(', ');
-      const rows=acled.map(r=>`  ${tag(r.adm2_name,r.acled_admin3,r.notes,r.location)}[${r.event_date}|${r.adm1_name}/${r.adm2_name}] ${r.event_type} — ${r.actor1||'?'}${r.actor2?' vs '+r.actor2:''} · ${r.fatalities||0} victimes${r.civilian_targeting?' (civils ciblés)':''}`).join('\n');
-      parts.push(`=== INCIDENTS ACLED [${acled.length}] ===\nRÉSUMÉ: ${acled.length} événements · ${totF} victimes · Types: ${tS}\nDÉTAIL:\n${rows}`);
-    }else{gaps.push('Incidents ACLED');parts.push(`=== INCIDENTS ACLED ===\nAucun événement ACLED${region?' pour '+region:''}${year?' en '+year:''}.`);}
+  if(isAll||hasTable('acled_incidents')){
+    const yr = route.year && route.year!=='null' ? route.year : '2026';
+    const agg=await sb(`v_acled_summary?select=*&region=ilike.*${encodeURIComponent(region)}*&year=eq.${yr}&order=niveau.desc,province.asc`);
+    const act=await sb(`v_acled_actors?select=*&region=ilike.*${encodeURIComponent(region)}*&year=eq.${yr}&order=evenements.desc&limit=6`);
+    const rec=await sb(`acled_incidents?select=event_date,event_type,sub_event_type,actor1,location,adm2_name,fatalities,civilian_targeting&adm1_name=ilike.*${encodeURIComponent(region)}*&year=eq.${yr}&order=event_date.desc&limit=10`);
+    console.log('[diag] acled view rows:', agg.length, '| actors:', act.length, '| recents:', rec.length);
+    if(agg.length){
+      const rows=agg.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}] ${r.year}: ${fmtNum(r.evenements)} événements, ${fmtNum(r.morts)} morts — batailles ${fmtNum(r.batailles)} (${fmtNum(r.morts_batailles)} morts) · violence/civils ${fmtNum(r.violence_civils)} (${fmtNum(r.morts_violence_civils)} morts) · explosions/EEI ${fmtNum(r.explosions)} (${fmtNum(r.morts_explosions)} morts) · ciblage civils ${fmtNum(r.ciblage_civils)} évts (${fmtNum(r.morts_ciblage_civils)} morts) · période ${r.premier_evenement}→${r.dernier_evenement}`).join('\n');
+      const acteurs=act.map(r=>`  ${r.acteur}: ${fmtNum(r.evenements)} évts, ${fmtNum(r.morts)} morts`).join('\n');
+      const recents=rec.map(r=>`  ${r.event_date} [${r.adm2_name}/${r.location}] ${r.sub_event_type||r.event_type} — ${r.actor1||'?'} — ${fmtNum(r.fatalities||0)} morts${r.civilian_targeting?' (ciblage civils)':''}`).join('\n');
+      parts.push(`=== INCIDENTS ACLED ${yr} — ${region} [précalculé] (source: ACLED) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les 10 événements récents sont des EXEMPLES, pas l'exhaustivité: les totaux font foi.\nAGRÉGATS:\n${rows}\nACTEURS PRINCIPAUX:\n${acteurs}\nÉVÉNEMENTS RÉCENTS (10 derniers):\n${recents}`);
+    }else{gaps.push(`Incidents ACLED ${yr}`);parts.push(`=== INCIDENTS ACLED ===\nAucune donnée ACLED ${yr} pour ${region}.`);}
   }
   // 5. DAILY UPDATES
   if(isAll||hasTable('daily_updates')){
@@ -1113,44 +1113,41 @@ async function buildContext(question){
   }
   // 7. HPC SÉVÉRITÉ JIAF 2026
   if(isAll||hasTable('hpc_severity')){
-    const rSev=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
-    console.log('[diag] HPC severity filter — rSev:', rSev, '| adm1 pattern:', region||'(none/national)');
-    const inter=await sb(`hpc_severity?select=adm1,adm2,severity&hpc_cycle=eq.2026&dimension_name=eq.INTERSECTOR${rSev}&order=severity.desc&limit=100`);
-    if(inter.length){
-      const rows=inter.map(r=>`  [${r.adm1}/${r.adm2}] sévérité intersectorielle: ${r.severity}`).join('\n');
-      const dist={};
-      inter.forEach(r=>{dist[r.severity]=(dist[r.severity]||0)+1;});
-      const distLine=[5,4,3,2,1].filter(s=>dist[s]).map(s=>`sévérité ${s}: ${dist[s]} province(s)`).join(' · ');
-      parts.push(`=== SÉVÉRITÉ JIAF INTERSECTORIELLE — HPC 2026 [${inter.length}] (source: JIAF HPC 2026) ===\nClassement des provinces par sévérité intersectorielle (1=minimal, 5=catastrophique). Signal hotspot/criticité.\nRÉPARTITION EXACTE (calculée): ${distLine}\n${rows}`);
-    }else{gaps.push('Sévérité JIAF HPC 2026');parts.push(`=== SÉVÉRITÉ JIAF — HPC 2026 ===\nAucune donnée de sévérité${region?' pour '+region:''}.`);}
-    if(region){
-      const cl=await sb(`hpc_severity?select=adm2,dimension_name,severity&hpc_cycle=eq.2026&cluster_level=eq.cluster${rSev}&order=severity.desc&limit=200`);
-      if(cl.length){
-        const rows=cl.map(r=>`  [${r.adm2}] ${r.dimension_name}: ${r.severity}`).join('\n');
-        parts.push(`=== SÉVÉRITÉ PAR CLUSTER — HPC 2026 [${cl.length}] ===\n${rows}`);
-      }
-    }
+    const sev=await sb(`v_hpc_severity_summary?select=*&region=ilike.*${encodeURIComponent(region)}*&order=niveau.desc,province.asc`);
+    console.log('[diag] hpc_severity view rows:', sev.length);
+    if(sev.length){
+      const rows=sev.map(r=>`  [${r.niveau==='region_max'?'RÉGION '+r.region+' (MAX des provinces)':r.province}] intersectorielle ${r.severite_intersectorielle} · ABRIS ${r.abris} · ÉDUCATION ${r.education} · GSAT ${r.gsat} · NUTRITION ${r.nutrition} · PROTECTION ${r.protection} · SANTÉ ${r.sante} · SECAL ${r.secal} · WASH ${r.wash}`).join('\n');
+      parts.push(`=== SÉVÉRITÉ JIAF HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: échelle JIAF 1-5, chaque valeur porte son libellé officiel (ex: 3-sévère, 4-critique) — utiliser EXACTEMENT ces libellés, ne jamais en substituer. La ligne MAX RÉGION = niveau le plus sévère parmi les provinces (règle d'extrapolation).\n${rows}`);
+    }else{gaps.push('Sévérité HPC 2026');parts.push(`=== SÉVÉRITÉ HPC 2026 ===\nAucune donnée de sévérité pour ${region}.`);}
   }
-  // 8. HPC PIN / CIBLE 2026 — détail régional
+  // HPC PIN / CIBLE 2026 — vue précalculée (régional)
   if(isAll||hasTable('hpc_pin')){
-    const rPin=region?`&adm1=ilike.*${encodeURIComponent(region)}*`:'';
-    console.log('[diag] HPC PIN filter — rPin:', rPin, '| adm1 pattern:', region||'(none/national)');
-    const pin=await sb(`hpc_pin?select=adm2,cluster,cluster_level,population_group,figure_type,figure_value&hpc_cycle=eq.2026${rPin}&order=cluster.asc&limit=600`);
+    const pin=await sb(`v_hpc_pin_summary?select=*&region=ilike.*${encodeURIComponent(region)}*&order=niveau.desc,ligne.asc,cluster.asc.nullsfirst`);
+    console.log('[diag] hpc_pin view rows:', pin.length);
     if(pin.length){
-      const rows=pin.map(r=>`  [${r.adm2}] ${r.cluster}(${r.cluster_level})/${r.population_group}/${r.figure_type}: ${fmtNum(r.figure_value)}`).join('\n');
-      parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [${pin.length}] (source: HPC 2026) ===\nRÈGLE: total = lignes cluster=intersectoral; ne jamais additionner les clusters sectoriels.\n${rows}`);
+      const rows=pin.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PIN PDI '+fmtNum(r.pin_pdi)+' · PIN retournés '+fmtNum(r.pin_retournes)+' · PIN non-dépl. '+fmtNum(r.pin_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
+      parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne JAMAIS recalculer ni additionner des lignes. Le total officiel = ligne INTERSECTORIEL (jamais la somme des secteurs). Protection totale = secteur PRO (jamais la somme des AoR LAM/LTB/PE/VBG). Réfugiés = caseload autonome, jamais additionné à l'intersectoriel.\n${rows}`);
     }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN pour ${region}.`);}
+  }
+  // HPC désagrégé (âge/sexe/handicap/groupe de population)
+  if(isAll||hasTable('hpc_disagg')){
+    const rDis=`&region=ilike.*${encodeURIComponent(region)}*`;
+    const dis=await sb(`v_hpc_disagg_summary?select=*${rDis}&order=niveau.desc,province.asc,figure_type.asc`);
+    console.log('[diag] hpc_disagg rows returned:', dis.length);
+    if(dis.length){
+      const rows=dis.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}] ${r.figure_type}: total ${fmtNum(r.total)} · filles(0-17) ${fmtNum(r.filles)} (${r.pct_filles}%) · garçons(0-17) ${fmtNum(r.garcons)} (${r.pct_garcons}%) · enfants(les deux) ${fmtNum(r.enfants)} (${r.pct_enfants}%) · femmes adultes(18-64) ${fmtNum(r.femmes_adultes)} · femmes âgées(65+) ${fmtNum(r.femmes_agees)} · femmes(18+, tous âges) ${fmtNum(r.femmes)} (${r.pct_femmes}%) · hommes(18+) ${fmtNum(r.hommes)} (${r.pct_hommes}%) · pers. âgées(65+, deux sexes) ${fmtNum(r.agees_65plus)} (${r.pct_65plus}%) · femmes+filles ${fmtNum(r.femmes_et_filles)} (${r.pct_femmes_filles}%) · femmes+enfants ${fmtNum(r.femmes_et_enfants)} (${r.pct_femmes_enfants}%) · handicap ${fmtNum(r.handicap)} (${r.pct_handicap}%) · PDI ${fmtNum(r.pdi)} · retournés ${fmtNum(r.retournes)} · non-dépl. ${fmtNum(r.non_deplaces)} · réfugiés ${fmtNum(r.refugies)}`).join('\n');
+      parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres et pourcentages PRÉCALCULÉS par la base de données — les citer tels quels, ne JAMAIS les recalculer. La ligne "RÉGION (TOTAL)" = total régional; les autres lignes = provinces. Pour une question régionale utiliser la ligne TOTAL, pour une province la ligne de cette province.\n${rows}`);
+    }else{gaps.push('Désagrégation HPC 2026');parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 ===\nAucune donnée désagrégée pour ${region}.`);}
   }
   } // end per-region loop
 
-  // 8. HPC PIN / CIBLE 2026 — résumé national (portée nationale uniquement)
-  if((isAll||hasTable('hpc_pin')) && !(route.regions && route.regions.length > 0)){
-    const pin=await sb(`hpc_pin?select=adm1,adm2,population_group,figure_type,figure_value&hpc_cycle=eq.2026&cluster=eq.intersectoral&population_group=eq.total&order=figure_value.desc&limit=200`);
+  // HPC PIN / CIBLE 2026 — national (portée nationale uniquement)
+  if((isAll||hasTable('hpc_pin')) && (!route.regions || route.regions.length===0)){
+    const pin=await sb(`v_hpc_pin_summary?select=*&niveau=eq.national&order=ligne.asc`);
+    console.log('[diag] hpc_pin national view rows:', pin.length);
     if(pin.length){
-      const byProv={};
-      pin.forEach(r=>{byProv[r.adm2]=byProv[r.adm2]||{adm1:r.adm1};byProv[r.adm2][r.figure_type]=r.figure_value;});
-      const rows=Object.entries(byProv).map(([p,v])=>`  [${v.adm1}/${p}] PIN intersectoriel: ${fmtNum(v.pin||0)} · cible: ${fmtNum(v.target||0)}`).join('\n');
-      parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 [${Object.keys(byProv).length}] (source: HPC 2026) ===\nPIN et cible intersectoriels (dédupliqués JIAF) par province. Total national = somme de ces valeurs.\n${rows}`);
+      const rows=pin.map(r=>`  [NATIONAL] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PIN PDI '+fmtNum(r.pin_pdi)+' · retournés '+fmtNum(r.pin_retournes)+' · non-dépl. '+fmtNum(r.pin_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
+      parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 — NATIONAL [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS officiels — citer tels quels, ne jamais recalculer.\n${rows}`);
     }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
