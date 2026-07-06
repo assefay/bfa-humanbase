@@ -484,50 +484,9 @@ function destroyChart(id){if(window._charts&&window._charts[id]){window._charts[
 function saveChart(id,chart){if(!window._charts)window._charts={};window._charts[id]=chart;}
 
 // ══ INTENT DETECTION ══════════════════════════════════════════════════════
-const REGION_MAP={
-  // LIPTAKO (ex-Sahel)
-  'liptako':'Liptako','sahel':'Liptako','dori':'Liptako',
-  // SOUM (ex-Sahel)
-  'soum':'Soum','djibo':'Soum',
-  // YAADGA (ex-Nord)
-  'yaadga':'Yaadga','yadega':'Yaadga','nord':'Yaadga','yatenga':'Yaadga','loroum':'Yaadga','ouahigouya':'Yaadga','titao':'Yaadga','seguenega':'Yaadga','séguénéga':'Yaadga',
-  // BANKUI (ex-Boucle du Mouhoun)
-  'bankui':'Bankui','boucle du mouhoun':'Bankui','mouhoun':'Bankui','dédougou':'Bankui','dedougou':'Bankui','solenzo':'Bankui',
-  // SOUROU (ex-Boucle du Mouhoun)
-  'sourou':'Sourou','tougan':'Sourou',
-  // KOULSÉ (ex-Centre-Nord)
-  'koulsé':'Koulsé','koulse':'Koulsé','centre-nord':'Koulsé','centre nord':'Koulsé','kaya':'Koulsé','bam':'Koulsé','kongoussi':'Koulsé','namentenga':'Koulsé','sanmatenga':'Koulsé',
-  // GOULMOU (ex-Est)
-  'goulmou':'Goulmou','gulmu':'Goulmou','fada':'Goulmou','gourma':'Goulmou','gnagna':'Goulmou','matiacoali':'Goulmou',
-  // SIRBA (ex-Est)
-  'sirba':'Sirba','bogande':'Sirba','bogandé':'Sirba','kompienga':'Sirba','pama':'Sirba','gnagna':'Sirba','gayeri':'Sirba','gayéri':'Sirba',
-  // TAPOA (ex-Est)
-  'tapoa':'Tapoa','diapaga':'Tapoa','kantchari':'Tapoa',
-  // NAKAMBÉ (ex-Centre-Est)
-  'nakambé':'Nakambé','nakambe':'Nakambé','centre-est':'Nakambé','centre est':'Nakambé','tenkodogo':'Nakambé','boulgou':'Nakambé','koulpelgo':'Nakambé','koulpelogo':'Nakambé','kouritenga':'Nakambé',
-  // DJÔRÔ (ex-Sud-Ouest)
-  'djôrô':'Djôrô','djoro':'Djôrô','sud-ouest':'Djôrô','sud ouest':'Djôrô','gaoua':'Djôrô','poni':'Djôrô','noumbiel':'Djôrô','bougouriba':'Djôrô','ioba':'Djôrô',
-  // GUIRIKO (ex-Hauts-Bassins)
-  'guiriko':'Guiriko','hauts-bassins':'Guiriko','hauts bassins':'Guiriko','bobo':'Guiriko','bobo-dioulasso':'Guiriko','houet':'Guiriko','kenedougou':'Guiriko','kénédougou':'Guiriko','tuy':'Guiriko',
-  // TANNOUYAN (ex-Cascades)
-  'tannouyan':'Tannouyan','tannounyan':'Tannouyan','cascades':'Tannouyan','banfora':'Tannouyan','comoe':'Tannouyan','comoé':'Tannouyan','leraba':'Tannouyan','léraba':'Tannouyan',
-  // KADIOGO (ex-Centre)
-  'kadiogo':'Kadiogo','centre':'Kadiogo','ouagadougou':'Kadiogo','ouaga':'Kadiogo',
-  // NANDO (ex-Centre-Ouest)
-  'nando':'Nando','centre-ouest':'Nando','centre ouest':'Nando','koudougou':'Nando','boulkiemde':'Nando','boulkiemdé':'Nando','sanguie':'Nando','sanguié':'Nando','sissili':'Nando','ziro':'Nando',
-  // NAZINON (ex-Centre-Sud)
-  'nazinon':'Nazinon','centre-sud':'Nazinon','centre sud':'Nazinon','manga':'Nazinon','bazega':'Nazinon','bazèga':'Nazinon','nahouri':'Nazinon','zoundweogo':'Nazinon',
-  // OUBRI (ex-Plateau-Central)
-  'oubri':'Oubri','plateau-central':'Oubri','plateau central':'Oubri','ziniaré':'Oubri','ziniare':'Oubri','ganzourgou':'Oubri','kourweogo':'Oubri','oubritenga':'Oubri'
-};
+let REGION_MAP={};
 const TOPIC_WEIGHTS={'sécurité':['security',3],'securite':['security',3],'incident':['security',3],'attaque':['security',3],'violence':['security',3],'mort':['security',2],'tué':['security',2],'blessé':['security',2],'eei':['security',2],'drone':['security',2],'gane':['security',3],'eigs':['security',3],'jnim':['security',3],'gsim':['security',3],'killed':['security',3],'attack':['security',3],'civilian':['security',2],'déplacement':['displacement',3],'deplacement':['displacement',3],'pdi':['displacement',3],'réfugié':['displacement',2],'gcorr':['displacement',3],'déplacé':['displacement',3],'displaced':['displacement',3],'ménage':['displacement',2],'réponse':['response',2],'reponse':['response',2],'assistance':['response',2],'distribution':['response',3],'bénéficiaire':['response',2],'vivres':['response',3],'pam':['response',2],'nutrition':['response',2],'wash':['response',2],'adra':['response',2],'accès':['access',3],'acces':['access',3],'convoi':['access',3],'cmcoord':['access',3],'corridor':['access',2],'axe':['access',2],'enclavée':['zones',3],'enclavee':['zones',3],'enclavé':['zones',3],'inaccessible':['zones',3],'zone difficile':['zones',3],'zones enclavées':['zones',3]};
 
-// ══ PLACE INDEX (admin-level aware) ═══════════════════════════════════════
-// Three separate tiers so a name can exist at multiple levels (e.g. "Soum" is
-// BOTH a region and a province). Resolution priority: region → province →
-// commune. If the user explicitly qualifies the level ("province du Soum",
-// "commune de ..."), that level wins. Otherwise the highest level is assumed.
-// region field = canonical region used by the data filters.
 function _norm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['’`]/g,' ').replace(/\s+/g,' ').trim();}
 
 // True if any of the provided text fields mentions the commune name (accent-insensitive, whole-word).
@@ -538,59 +497,9 @@ function _mentionsPlace(placeName, ...fields){
   return fields.some(f=>f && re.test(_norm(String(f))));
 }
 
-// alias → canonical region (region tier: alias resolves to itself as a region)
-const PLACE_REGIONS={
-  'liptako':'Liptako','sahel':'Liptako','dori':'Liptako',
-  'soum':'Soum',
-  'yaadga':'Yaadga','yadega':'Yaadga','nord':'Yaadga','yatenga':'Yaadga',
-  'bankui':'Bankui','boucle du mouhoun':'Bankui','mouhoun':'Bankui',
-  'sourou':'Sourou',
-  'koulse':'Koulsé','centre-nord':'Koulsé','centre nord':'Koulsé',
-  'goulmou':'Goulmou','gulmu':'Goulmou','gourma':'Goulmou',
-  'sirba':'Sirba',
-  'tapoa':'Tapoa',
-  'nakambe':'Nakambé','centre-est':'Nakambé','centre est':'Nakambé',
-  'djoro':'Djôrô','sud-ouest':'Djôrô','sud ouest':'Djôrô','poni':'Djôrô',
-  'guiriko':'Guiriko','hauts-bassins':'Guiriko','hauts bassins':'Guiriko','houet':'Guiriko',
-  'tannouyan':'Tannouyan','tannounyan':'Tannouyan','cascades':'Tannouyan','comoe':'Tannouyan',
-  'kadiogo':'Kadiogo','centre':'Kadiogo','ouagadougou':'Kadiogo','ouaga':'Kadiogo',
-  'nando':'Nando','centre-ouest':'Nando','centre ouest':'Nando',
-  'nazinon':'Nazinon','centre-sud':'Nazinon','centre sud':'Nazinon',
-  'oubri':'Oubri','plateau-central':'Oubri','plateau central':'Oubri'
-};
-// alias → {name, region} (province tier). NB: "soum" appears here too.
-const PLACE_PROVINCES={
-  'soum':{name:'Soum',region:'Soum'},
-  'loroum':{name:'Loroum',region:'Yaadga'},'yatenga':{name:'Yatenga',region:'Yaadga'},
-  'bam':{name:'Bam',region:'Koulsé'},'namentenga':{name:'Namentenga',region:'Koulsé'},'sanmatenga':{name:'Sanmatenga',region:'Koulsé'},
-  'gnagna':{name:'Gnagna',region:'Sirba'},'komondjari':{name:'Komondjari',region:'Sirba'},'kompienga':{name:'Kompienga',region:'Sirba'},
-  'gourma':{name:'Gourma',region:'Goulmou'},
-  'kourittenga':{name:'Kourittenga',region:'Nakambé'},'boulgou':{name:'Boulgou',region:'Nakambé'},'koulpelogo':{name:'Koulpelogo',region:'Nakambé'},
-  'kenedougou':{name:'Kénédougou',region:'Guiriko'},'tuy':{name:'Tuy',region:'Guiriko'},
-  'leraba':{name:'Léraba',region:'Tannouyan'},
-  'noumbiel':{name:'Noumbiel',region:'Djôrô'},'bougouriba':{name:'Bougouriba',region:'Djôrô'},'ioba':{name:'Ioba',region:'Djôrô'},
-  'sanguie':{name:'Sanguié',region:'Nando'},'sissili':{name:'Sissili',region:'Nando'},'ziro':{name:'Ziro',region:'Nando'},'boulkiemde':{name:'Boulkiemdé',region:'Nando'},
-  'nahouri':{name:'Nahouri',region:'Nazinon'},'zoundweogo':{name:'Zoundwéogo',region:'Nazinon'},
-  'ganzourgou':{name:'Ganzourgou',region:'Oubri'},'kourweogo':{name:'Kourwéogo',region:'Oubri'},'oubritenga':{name:'Oubritenga',region:'Oubri'}
-};
-// alias → {name, region} (commune/town tier)
-const PLACE_COMMUNES={
-  'djibo':{name:'Djibo',region:'Soum'},'dori':{name:'Dori',region:'Liptako'},'gorom-gorom':{name:'Gorom-Gorom',region:'Liptako'},'gorom gorom':{name:'Gorom-Gorom',region:'Liptako'},'sebba':{name:'Sebba',region:'Liptako'},
-  'ouahigouya':{name:'Ouahigouya',region:'Yaadga'},'titao':{name:'Titao',region:'Yaadga'},'seguenega':{name:'Séguénéga',region:'Yaadga'},
-  'dedougou':{name:'Dédougou',region:'Bankui'},'solenzo':{name:'Solenzo',region:'Bankui'},
-  'tougan':{name:'Tougan',region:'Sourou'},
-  'kaya':{name:'Kaya',region:'Koulsé'},'kongoussi':{name:'Kongoussi',region:'Koulsé'},'boulsa':{name:'Boulsa',region:'Koulsé'},'barsalogho':{name:'Barsalogho',region:'Koulsé'},'pissila':{name:'Pissila',region:'Koulsé'},
-  'fada':{name:'Fada',region:'Goulmou'},'fada n gourma':{name:'Fada N\'gourma',region:'Goulmou'},'matiacoali':{name:'Matiacoali',region:'Goulmou'},'diabo':{name:'Diabo',region:'Goulmou'},
-  'bogande':{name:'Bogandé',region:'Sirba'},'gayeri':{name:'Gayéri',region:'Sirba'},'mani':{name:'Mani',region:'Sirba'},'pama':{name:'Pama',region:'Sirba'},
-  'diapaga':{name:'Diapaga',region:'Tapoa'},'kantchari':{name:'Kantchari',region:'Tapoa'},'botou':{name:'Botou',region:'Tapoa'},
-  'tenkodogo':{name:'Tenkodogo',region:'Nakambé'},'koupela':{name:'Koupéla',region:'Nakambé'},'garango':{name:'Garango',region:'Nakambé'},
-  'gaoua':{name:'Gaoua',region:'Djôrô'},
-  'bobo':{name:'Bobo-Dioulasso',region:'Guiriko'},'bobo-dioulasso':{name:'Bobo-Dioulasso',region:'Guiriko'},'orodara':{name:'Orodara',region:'Guiriko'},'hounde':{name:'Houndé',region:'Guiriko'},
-  'banfora':{name:'Banfora',region:'Tannouyan'},'sindou':{name:'Sindou',region:'Tannouyan'},
-  'koudougou':{name:'Koudougou',region:'Nando'},'reo':{name:'Réo',region:'Nando'},'leo':{name:'Léo',region:'Nando'},
-  'manga':{name:'Manga',region:'Nazinon'},'po':{name:'Pô',region:'Nazinon'},
-  'ziniare':{name:'Ziniaré',region:'Oubri'},'zorgho':{name:'Zorgho',region:'Oubri'}
-};
+let PLACE_REGIONS={};
+let PLACE_PROVINCES={};
+let PLACE_COMMUNES={};
 
 // Find the longest alias in `q` present in `map`. Returns the alias or null.
 function _matchAlias(q,map){
@@ -602,43 +511,90 @@ function _matchAlias(q,map){
   return null;
 }
 
-// Normalize a region name (possibly an old/ex name, possibly accent-free) to the
-// current official region. Returns null if input is empty/'null', or if it is an
-// AMBIGUOUS split ex-region (Sahel→Liptako+Soum, Est→Goulmou+Sirba+Tapoa,
-// Boucle du Mouhoun→Bankui+Sourou) where we cannot safely pick one half — in that
-// case the caller should rely on the resolved place or fall back to national scope.
-function normalizeRegionName(name){
-  if(!name || name==='null') return null;
-  const n=_norm(name);
-  // Already a current region name?
-  const current={'liptako':'Liptako','soum':'Soum','yaadga':'Yaadga','bankui':'Bankui','sourou':'Sourou','koulse':'Koulsé','goulmou':'Goulmou','sirba':'Sirba','tapoa':'Tapoa','nakambe':'Nakambé','djoro':'Djôrô','guiriko':'Guiriko','tannouyan':'Tannouyan','tannounyan':'Tannouyan','kadiogo':'Kadiogo','nando':'Nando','nazinon':'Nazinon','oubri':'Oubri'};
-  if(current[n]) return current[n];
-  // Ambiguous split ex-regions → null (cannot pick one half safely)
-  if(/(sahel|^est$|boucle du mouhoun)/.test(n)) return null;
-  // Unambiguous old → new
-  const oldToNew={'nord':'Yaadga','yatenga':'Yaadga','centre-nord':'Koulsé','centre nord':'Koulsé','centre-est':'Nakambé','centre est':'Nakambé','sud-ouest':'Djôrô','sud ouest':'Djôrô','hauts-bassins':'Guiriko','hauts bassins':'Guiriko','cascades':'Tannouyan','centre':'Kadiogo','centre-ouest':'Nando','centre ouest':'Nando','centre-sud':'Nazinon','centre sud':'Nazinon','plateau-central':'Oubri','plateau central':'Oubri'};
-  return oldToNew[n] || null;
+
+let OLD_TO_NEW_REGIONS={};
+
+let CURRENT_REGIONS=[];
+
+// ══ GÉO-RÉFÉRENTIEL GÉNÉRÉ DEPUIS LA BASE (source autoritative) ══
+const GEN = {REGION_MAP:{}, PLACE_REGIONS:{}, PLACE_PROVINCES:{}, PLACE_COMMUNES:{}, CURRENT_REGIONS:[], OLD_TO_NEW_REGIONS:{}};
+let geoMapsReady = null;
+
+function _stripKey(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
+function _addAlias(map, key, val){const k=_stripKey(key); if(k && !(k in map)) map[k]=val;}
+
+async function loadGeoMaps(){
+  const [r1, r2, r3, caps, ali] = await Promise.all([
+    sb(`admin1_regions?select=adm1_pcode,adm1_name,adm1_name_fr,adm1_name_old`),
+    sb(`admin2_provinces?select=adm2_pcode,adm2_name,adm2_name_fr,adm2_name_old,adm1_pcode`),
+    sb(`admin3_communes?select=adm3_pcode,adm3_name,adm3_name_fr,adm1_pcode`),
+    sb(`capitals?select=adm_level,capital,adm1_pcode&adm_level=lte.2`),
+    sb(`geo_aliases?select=alias,adm1_pcode`)
+  ]);
+  const regionByPcode = {};
+  // 1. Régions : canonique = adm1_name_fr (forme accentuée, celle des tables de données)
+  for(const r of r1){
+    const canon = r.adm1_name_fr || r.adm1_name;
+    regionByPcode[r.adm1_pcode] = canon;
+    GEN.CURRENT_REGIONS.push(canon);
+    _addAlias(GEN.REGION_MAP, r.adm1_name, canon);
+    _addAlias(GEN.REGION_MAP, r.adm1_name_fr, canon);
+    _addAlias(GEN.PLACE_REGIONS, r.adm1_name, canon);
+    _addAlias(GEN.PLACE_REGIONS, r.adm1_name_fr, canon);
+    // OLD → NEW : regroupé par ancien nom (les splits tombent automatiquement)
+    if(r.adm1_name_old){
+      const ok=_stripKey(r.adm1_name_old);
+      (GEN.OLD_TO_NEW_REGIONS[ok]=GEN.OLD_TO_NEW_REGIONS[ok]||[]).push(canon);
+      const okh=ok.replace(/\s+/g,'-'); if(okh!==ok) GEN.OLD_TO_NEW_REGIONS[okh]=GEN.OLD_TO_NEW_REGIONS[ok];
+    }
+  }
+  // 2. Chefs-lieux (région puis province) — priorité: ne jamais écraser un alias existant
+  for(const c of caps){
+    const reg = regionByPcode[c.adm1_pcode]; if(!reg||!c.capital) continue;
+    if(c.adm_level===1){ _addAlias(GEN.REGION_MAP, c.capital, reg); _addAlias(GEN.PLACE_REGIONS, c.capital, reg); }
+  }
+  // 3. Provinces (47, couverture complète)
+  for(const p of r2){
+    const reg = regionByPcode[p.adm1_pcode]; if(!reg) continue;
+    const nm = p.adm2_name_fr || p.adm2_name;
+    _addAlias(GEN.PLACE_PROVINCES, p.adm2_name, {name:nm, region:reg});
+    _addAlias(GEN.PLACE_PROVINCES, p.adm2_name_fr, {name:nm, region:reg});
+    _addAlias(GEN.REGION_MAP, p.adm2_name, reg);
+    _addAlias(GEN.REGION_MAP, p.adm2_name_fr, reg);
+    if(p.adm2_name_old){
+      _addAlias(GEN.PLACE_PROVINCES, p.adm2_name_old, {name:nm, region:reg});
+      _addAlias(GEN.REGION_MAP, p.adm2_name_old, reg);
+    }
+  }
+  // 4. Communes (351)
+  for(const m of r3){
+    const reg = regionByPcode[m.adm1_pcode]; if(!reg) continue;
+    const nm = m.adm3_name_fr || m.adm3_name;
+    _addAlias(GEN.PLACE_COMMUNES, m.adm3_name, {name:nm, region:reg});
+    _addAlias(GEN.PLACE_COMMUNES, m.adm3_name_fr, {name:nm, region:reg});
+    _addAlias(GEN.REGION_MAP, m.adm3_name, reg);
+    _addAlias(GEN.REGION_MAP, m.adm3_name_fr, reg);
+  }
+  // 5. Alias informels (table geo_aliases — source autoritative pour les formes courtes)
+  for(const a of ali){
+    const reg = regionByPcode[a.adm1_pcode]; if(!reg) continue;
+    _addAlias(GEN.REGION_MAP, a.alias, reg);
+    _addAlias(GEN.PLACE_REGIONS, a.alias, reg);
+  }
+  console.log('[geo] maps générées depuis la base:',
+    {regions: GEN.CURRENT_REGIONS.length, region_aliases: Object.keys(GEN.REGION_MAP).length,
+     provinces: Object.keys(GEN.PLACE_PROVINCES).length, communes: Object.keys(GEN.PLACE_COMMUNES).length,
+     old_to_new: GEN.OLD_TO_NEW_REGIONS});
+  REGION_MAP=GEN.REGION_MAP;
+  PLACE_REGIONS=GEN.PLACE_REGIONS;
+  PLACE_PROVINCES=GEN.PLACE_PROVINCES;
+  PLACE_COMMUNES=GEN.PLACE_COMMUNES;
+  CURRENT_REGIONS=GEN.CURRENT_REGIONS;
+  OLD_TO_NEW_REGIONS=GEN.OLD_TO_NEW_REGIONS;
+  console.log('[geo] référentiel chargé:', {regions: CURRENT_REGIONS.length, aliases: Object.keys(REGION_MAP).length, provinces: Object.keys(PLACE_PROVINCES).length, communes: Object.keys(PLACE_COMMUNES).length});
+  return GEN;
 }
-
-const OLD_TO_NEW_REGIONS = {
-  'boucle du mouhoun': ['Bankui', 'Sourou'],
-  'est':               ['Sirba', 'Goulmou', 'Tapoa'],
-  'sahel':             ['Liptako', 'Soum'],
-  'centre':            ['Kadiogo'],
-  'cascades':          ['Tannounyan'],
-  'centre-est':        ['Nakambé'],
-  'centre-nord':       ['Koulsé'],
-  'centre-ouest':      ['Nando'],
-  'centre-sud':        ['Nazinon'],
-  'hauts-bassins':     ['Guiriko'],
-  'nord':              ['Yaadga'],
-  'plateau-central':   ['Oubri'],
-  'sud-ouest':         ['Djôrô'],
-};
-
-const CURRENT_REGIONS = ['Bankui','Djôrô','Goulmou','Guiriko','Kadiogo','Koulsé',
-  'Liptako','Nakambé','Nando','Nazinon','Oubri','Sirba','Soum','Sourou',
-  'Tannounyan','Tapoa','Yaadga'];
+geoMapsReady = loadGeoMaps().catch(e=>{console.error('[geo] échec chargement référentiel:', e); return null;});
 
 function stripAccentsLower(s) {
   return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -807,6 +763,7 @@ function enforceTerminologyRules(text) {
 // ══ AI ROUTER ════════════════════════════════════════════════════════════════
 
 async function routeQuery(question) {
+  await geoMapsReady;
   const {region, year} = detectIntent(question);
   const place = resolvePlace(question);        // {name, level, region} | null
   const shapeSeed = detectShape(question);     // deterministic fallback shape
