@@ -698,8 +698,8 @@ async function buildSystemPrompt(){
 }
 
 async function loadKnowledge(entityName){
-  let filter=entityName?`&entity_name=eq.${encodeURIComponent(entityName)}`:'';
-  const kb=await sb(`knowledge_base?select=category,entity_name,attribute,value,valid_from,valid_to,notes${filter}&order=category.asc,entity_name.asc`);
+  let filter=entityName?`&entity_name=eq.${encodeURIComponent(entityName)}`:'&entity_name=eq.systeme';
+  const kb=await sb(`knowledge_base?select=category,entity_name,attribute,value,valid_from,valid_to,notes&category=eq.instruction${filter}&order=entity_name.asc,attribute.asc`);
   if(!kb.length)return '';
   const lines=kb.map(r=>`[${r.category}|${r.entity_name}|${r.attribute}${r.valid_from?'|'+r.valid_from.substring(0,7):''}${r.valid_to?'→'+r.valid_to.substring(0,7):''}] ${r.value}${r.notes?' ('+r.notes+')':''}`);
   return`=== BASE DE CONNAISSANCES CONTEXTUELLE ===\n${lines.join('\n')}`;
@@ -1010,14 +1010,14 @@ async function buildContext(question){
   if(isAll||hasTable('weekly_reports')){
     const rWeekly=region?`&region=ilike.*${encodeURIComponent(region)}*`:'';
     const yWeekly=year?`&week_start=gte.${year}-01-01&week_start=lte.${year}-12-31`:'';
-    const weekly=await sb(`weekly_reports?select=week_start,week_end,region,point_saillant,contexte_securitaire,mouvements_population,reponse_humanitaire,acces_cmcoord,civils_tues,deplaces_estimes&order=week_start.desc&limit=200${rWeekly}${yWeekly}`);
+    const weekly=await sb(`weekly_reports?select=week_start,week_end,region,point_saillant,contexte_securitaire,mouvements_population,reponse_humanitaire,acces_cmcoord,civils_tues,deplaces_estimes&order=week_start.desc&limit=12${rWeekly}${yWeekly}`);
     if(weekly.length){
       const rows=weekly.map(r=>`  ${tag(r.point_saillant,r.contexte_securitaire,r.mouvements_population,r.reponse_humanitaire,r.acces_cmcoord)}[${r.week_start}→${r.week_end}|${r.region}]${r.civils_tues?' ⚠'+r.civils_tues+' civils tués':''}${r.deplaces_estimes?' 🔴'+fmtNum(r.deplaces_estimes)+' déplacés':''}
     POINT: ${r.point_saillant||'—'}
-    SÉCURITÉ: ${(r.contexte_securitaire||'').substring(0,200)}
-    DÉPLACEMENTS: ${(r.mouvements_population||'').substring(0,150)}
-    RÉPONSE: ${(r.reponse_humanitaire||'').substring(0,150)}
-    ACCÈS/CMCOORD: ${(r.acces_cmcoord||'').substring(0,100)}`).join('\n');
+    SÉCURITÉ: ${(r.contexte_securitaire||'').substring(0,300)}
+    DÉPLACEMENTS: ${(r.mouvements_population||'').substring(0,300)}
+    RÉPONSE: ${(r.reponse_humanitaire||'').substring(0,300)}
+    ACCÈS/CMCOORD: ${(r.acces_cmcoord||'').substring(0,300)}`).join('\n');
       parts.push(`=== RAPPORTS HEBDOMADAIRES [${weekly.length} entrées] ===\n${rows}`);
     }else{gaps.push('Rapports hebdomadaires');parts.push(`=== RAPPORTS HEBDOMADAIRES ===\nAucune donnée${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
@@ -1109,7 +1109,9 @@ async function buildContext(question){
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   console.timeEnd('[perf] 2-supabase-fetches');
-  return parts.join('\n\n');
+  const _ctx=parts.join('\n\n');
+  console.log('[perf] context size:', _ctx.length, 'chars ≈', Math.round(_ctx.length/4), 'tokens | par section:', parts.map(p=>`${(p.split('\n')[0]||'').substring(0,40)}: ${p.length}`).join(' · '));
+  return _ctx;
 }
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════════════
