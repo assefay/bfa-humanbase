@@ -782,7 +782,8 @@ admin3_communes: 351 communes
 capitals: chefs-lieux régions/provinces/communes
 hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par cluster et sévérité intersectorielle (INTERSECTOR = signal hotspot/criticité). Pour questions sur zones critiques, hotspots, sévérité, gravité des besoins.
 hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.
-hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.`;
+hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.
+cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -1096,6 +1097,20 @@ async function buildContext(question){
       parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres et pourcentages PRÉCALCULÉS par la base de données — les citer tels quels, ne JAMAIS les recalculer. La ligne "RÉGION (TOTAL)" = total régional; les autres lignes = provinces. Pour une question régionale utiliser la ligne TOTAL, pour une province la ligne de cette province.\n${rows}`);
     }else{gaps.push('Désagrégation HPC 2026');parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 ===\nAucune donnée désagrégée pour ${region}.`);}
   }
+  // COUVERTURE DE LA RÉPONSE (atteints vs cibles, vue précalculée)
+  if(isAll||hasTable('cluster_reached')){
+    const cov=await sb(`v_cluster_coverage?select=*&region=ilike.*${encodeURIComponent(region)}*&order=niveau.desc,cluster.asc`);
+    console.log('[diag] coverage view rows:', cov.length);
+    if(cov.length){
+      const rows=cov.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}${r.province_priorisee?' ★PRIORISÉE':''}] ${r.cluster}: atteints ${fmtNum(r.atteints)} / cible ${fmtNum(r.cible)} (${r.pct_couverture}%) · restant ${fmtNum(r.restant_a_atteindre)}${r.cible_priorisee!=null?' · priorisés: '+fmtNum(r.atteints_priorises)+'/'+fmtNum(r.cible_priorisee)+' ('+r.pct_couverture_priorisee+'%)':''} · cumul à M${r.dernier_mois_rapporte}`).join('\n');
+      parts.push(`=== COUVERTURE RÉPONSE 2026 — ${region} [précalculé] (source: Response Monitoring, cumul jan-M${cov[0].dernier_mois_rapporte}) ===\nRÈGLE: chiffres PRÉCALCULÉS cumulatifs — citer tels quels. INTERSECTORIEL = bilan officiel dédupliqué (max cluster par province + réfugiés): ne JAMAIS additionner les clusters entre eux. « Personnes priorisées » = cibles des provinces en sévérité intersectorielle 4. Les atteints dépendent de la complétude du rapportage des clusters.\n${rows}`);
+      const mensR=await sb(`v_reached_monthly?select=*&region=ilike.*${encodeURIComponent(region)}*&cluster=eq.INTERSECTORIEL&order=mois.asc`);
+      if(mensR.length){
+        const ligne=mensR.map(r=>`  ${r.mois_nom}: cumul ${fmtNum(r.atteints_cumul)}${r.atteints_dans_le_mois!=null?' (+'+fmtNum(r.atteints_dans_le_mois)+')':''} · priorisés ${fmtNum(r.atteints_priorises_cumul)}${r.priorises_dans_le_mois!=null?' (+'+fmtNum(r.priorises_dans_le_mois)+')':''}`).join('\n');
+        parts.push(`=== SÉRIE MENSUELLE ATTEINTS 2026 — ${region} (INTERSECTORIEL) [précalculé] ===\nCUMULATIF + delta mensuel.\n${ligne}`);
+      }
+    }else{gaps.push('Couverture réponse 2026');parts.push(`=== COUVERTURE RÉPONSE 2026 ===\nAucune donnée de réponse pour ${region}.`);}
+  }
   } // end per-region loop
 
   // HPC PIN / CIBLE 2026 — national (portée nationale uniquement)
@@ -1106,6 +1121,20 @@ async function buildContext(question){
       const rows=pin.map(r=>`  [NATIONAL] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PIN PDI '+fmtNum(r.pin_pdi)+' · retournés '+fmtNum(r.pin_retournes)+' · non-dépl. '+fmtNum(r.pin_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
       parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 — NATIONAL [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS officiels — citer tels quels, ne jamais recalculer.\n${rows}`);
     }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
+  }
+  // COUVERTURE RÉPONSE — national
+  if((isAll||hasTable('cluster_reached')) && (!route.regions || route.regions.length===0)){
+    const cov=await sb(`v_cluster_coverage?select=*&niveau=eq.national&order=cluster.asc`);
+    console.log('[diag] coverage national view rows:', cov.length);
+    if(cov.length){
+      const rows=cov.map(r=>`  [NATIONAL] ${r.cluster}: atteints ${fmtNum(r.atteints)} / cible ${fmtNum(r.cible)} (${r.pct_couverture}%) · restant ${fmtNum(r.restant_a_atteindre)}${r.cible_priorisee!=null?' · priorisés: '+fmtNum(r.atteints_priorises)+'/'+fmtNum(r.cible_priorisee)+' ('+r.pct_couverture_priorisee+'%)':''}`).join('\n');
+      parts.push(`=== COUVERTURE RÉPONSE 2026 — NATIONAL [précalculé] (source: Response Monitoring, cumulatif) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels. INTERSECTORIEL = bilan officiel dédupliqué; ne jamais additionner les clusters. « Priorisées » = provinces en sévérité 4.\n${rows}`);
+      const mens=await sb(`v_reached_monthly?select=*&niveau=eq.national&cluster=eq.INTERSECTORIEL&order=mois.asc`);
+      if(mens.length){
+        const ligne=mens.map(r=>`  ${r.mois_nom}: cumul ${fmtNum(r.atteints_cumul)}${r.atteints_dans_le_mois!=null?' (+'+fmtNum(r.atteints_dans_le_mois)+' dans le mois)':''} · priorisés cumul ${fmtNum(r.atteints_priorises_cumul)}${r.priorises_dans_le_mois!=null?' (+'+fmtNum(r.priorises_dans_le_mois)+')':''}`).join('\n');
+        parts.push(`=== SÉRIE MENSUELLE ATTEINTS 2026 — NATIONAL INTERSECTORIEL [précalculé] ===\nRÈGLE: valeurs CUMULATIVES depuis janvier + delta mensuel entre parenthèses — citer tels quels. Pour un cluster spécifique par mois, la vue v_reached_monthly existe aussi par cluster.\n${ligne}`);
+      }
+    }else{gaps.push('Couverture réponse 2026');parts.push(`=== COUVERTURE RÉPONSE ===\nAucune donnée nationale de réponse.`);}
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   console.timeEnd('[perf] 2-supabase-fetches');
