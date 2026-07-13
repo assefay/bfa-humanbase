@@ -1005,6 +1005,12 @@ async function buildContext(question){
       const pctIntra=totP>0?Math.round(intra/totP*100):0;
       const pctInter=totP>0?Math.round(inter/totP*100):0;
       parts.push(`=== GCORR DÉPLACEMENTS [${gcorr.length} alertes] ===\nTOTAL GLOBAL: ${fmtNum(totP)} personnes, ${fmtNum(totM)} ménages\nNIVEAU RÉGION — Intra-régionaux: ${fmtNum(intra)} pers (${pctIntra}%) · Inter-régionaux: ${fmtNum(inter)} pers (${pctInter}%)\nNIVEAU COMMUNE — Intra-communaux: ${fmtNum(intraComm)} pers (${pctIntraComm}%) · Inter-communaux: ${fmtNum(interComm)} pers (${pctInterComm}%)\nCORRIDORS RÉGION (origine→destination):\n${topCorridors}\nCORRIDORS PROVINCE (origine→destination):\n${topProvCorridors}\nCORRIDORS COMMUNE (origine→destination):\n${topCommCorridors}\nDÉTAIL PAR RÉGION D'ACCUEIL:\n${detail}`);
+      const gm=await sb(`v_gcorr_summary?select=*&region=eq.${encodeURIComponent(region)}&annee=eq.${route.year&&route.year!=='null'?route.year:'2026'}&order=mois.asc.nullsfirst`);
+      if(gm.length){
+        const mois=['','janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+        const serie=gm.map(r=>r.mois==null?`  [TOTAL] ${fmtNum(r.personnes)} personnes, ${fmtNum(r.alertes)} alertes`:`  ${mois[r.mois]}: ${fmtNum(r.personnes)} pers. (${fmtNum(r.alertes)} alertes)`).join('\n');
+        parts.push(`=== FLUX MENSUEL GCORR — ${region} [précalculé] ===\nNouveaux déplacements par mois (date de choc).\n${serie}`);
+      }
     }else{gaps.push('Déplacements GCORR');parts.push(`=== GCORR DÉPLACEMENTS ===\nAucune alerte${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
   // 2. WEEKLY REPORTS
@@ -1135,6 +1141,19 @@ async function buildContext(question){
         parts.push(`=== SÉRIE MENSUELLE ATTEINTS 2026 — NATIONAL INTERSECTORIEL [précalculé] ===\nRÈGLE: valeurs CUMULATIVES depuis janvier + delta mensuel entre parenthèses — citer tels quels. Pour un cluster spécifique par mois, la vue v_reached_monthly existe aussi par cluster.\n${ligne}`);
       }
     }else{gaps.push('Couverture réponse 2026');parts.push(`=== COUVERTURE RÉPONSE ===\nAucune donnée nationale de réponse.`);}
+  }
+  // GCORR — national (nouveaux déplacements, portée nationale uniquement)
+  if((isAll||hasTable('gcorr_alerts')) && (!route.regions || route.regions.length===0)){
+    const yr = route.year && route.year!=='null' ? route.year : '2026';
+    const g=await sb(`v_gcorr_summary?select=*&niveau=eq.national&annee=eq.${yr}&order=mois.asc.nullsfirst`);
+    console.log('[diag] gcorr national view rows:', g.length);
+    if(g.length){
+      const mois=['','janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      const rows=g.map(r=>r.mois==null
+        ?`  [TOTAL ${r.annee}] ${fmtNum(r.alertes)} alertes · ${fmtNum(r.personnes)} personnes (${fmtNum(r.menages)} ménages) · période ${r.premier_choc}→${r.dernier_choc}`
+        :`  ${mois[r.mois]}: ${fmtNum(r.personnes)} personnes (${fmtNum(r.alertes)} alertes)`).join('\n');
+      parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ${yr} — NATIONAL [précalculé] (source: GCORR, alertes validées) ===\nRÈGLE: chiffres officiels PRÉCALCULÉS de NOUVEAUX déplacements (flux, par date de choc) — citer tels quels. Distinct du stock de PDI (HPC). La ligne TOTAL = cumul annuel.\n${rows}`);
+    }else{gaps.push(`Déplacements GCORR ${yr}`);parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ===\nAucune alerte ${yr}.`);}
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   console.timeEnd('[perf] 2-supabase-fetches');
