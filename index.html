@@ -693,8 +693,33 @@ function detectIntent(question){
 // ══ KNOWLEDGE BASE — load relevant entries ════════════════════════════════
 async function buildSystemPrompt(){
   const instructions=await sb(`knowledge_base?select=attribute,value&category=eq.instruction&entity_name=eq.systeme&order=attribute.asc`);
-  if(!instructions.length)return`Tu es un analyste humanitaire senior OCHA Burkina Faso. Réponds en français. Utilise uniquement les données fournies.`;
-  return instructions.map(r=>r.value).join('\n\n');
+  let prompt = instructions.length
+    ? instructions.map(r=>r.value).join('\n\n')
+    : `Tu es un analyste humanitaire senior OCHA Burkina Faso. Réponds en français. Utilise uniquement les données fournies.`;
+
+  // ── Définitions et méthodes (concept / methodology / table_description) ──
+  try{
+    const defs=await sb(`knowledge_base?select=category,entity_name,attribute,value&category=in.(concept,methodology,table_description)&order=category.asc,entity_name.asc,attribute.asc`);
+    if(Array.isArray(defs)&&defs.length){
+      const lines=defs.map(r=>`[${r.category}] ${r.entity_name} / ${r.attribute}: ${r.value}`);
+      prompt+=`\n\n=== DÉFINITIONS ET MÉTHODES (source de vérité : knowledge_base) ===\n`
+        +`RÈGLE: pour toute question de concept (que signifie un score, comment est calculé X, que contient une table), répondre à partir de ces définitions — jamais de mémoire. Ne pas réciter la méthodologie si la question porte sur la situation ; l'utiliser pour interpréter correctement les chiffres.\n`
+        +lines.join('\n');
+    }
+  }catch(e){console.warn('[buildSystemPrompt] définitions (knowledge_base) non chargées:',e);}
+
+  // ── Couverture des données (v_data_coverage) ─────────────────────────────
+  try{
+    const cov=await sb(`v_data_coverage?select=source,domain,coverage_end,cadence,status,note&order=domain.asc,source.asc`);
+    if(Array.isArray(cov)&&cov.length){
+      const lines=cov.map(r=>`${r.source} (${r.domain}) : jusqu'au ${r.coverage_end||'sans date (cycle annuel)'} — ${r.cadence||''} — ${r.status||''} — ${r.note||''}`);
+      prompt+=`\n\n=== COUVERTURE DES DONNÉES (v_data_coverage, lue à l'instant) ===\n`
+        +`RÈGLE: si la période demandée dépasse coverage_end d'une source, le dire EN TÊTE de réponse : « Données <source> disponibles jusqu'au <coverage_end> ; pas de données pour <période demandée>. » Ne jamais dire « données manquantes » sans avoir consulté ce tableau. status=closed = source définitivement terminée (ex. INSO) : dire « source fermée », pas « obsolète ».\n`
+        +lines.join('\n');
+    }
+  }catch(e){console.warn('[buildSystemPrompt] couverture des données (v_data_coverage) non chargée:',e);}
+
+  return prompt;
 }
 
 async function loadKnowledge(entityName){
@@ -783,7 +808,8 @@ capitals: chefs-lieux régions/provinces/communes
 hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par cluster et sévérité intersectorielle (INTERSECTOR = signal hotspot/criticité). Pour questions sur zones critiques, hotspots, sévérité, gravité des besoins.
 hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.
 hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.
-cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.`;
+cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.
+partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, mensuel jan-avril, vue v_3w_presence) — organisations par cluster × région × mois, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives.`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -1117,6 +1143,20 @@ async function buildContext(question){
       }
     }else{gaps.push('Couverture réponse 2026');parts.push(`=== COUVERTURE RÉPONSE 2026 ===\nAucune donnée de réponse pour ${region}.`);}
   }
+  // PRÉSENCE 3W (Qui/Quoi/Où, vue précalculée)
+  if(isAll||hasTable('partners_3w')){
+    const w3=await sb(`v_3w_presence?select=*&region=eq.${encodeURIComponent(region)}&order=bimestre.asc.nullsfirst,cluster_code.asc.nullsfirst&limit=80`);
+    console.log('[diag] 3w presence rows:', w3.length);
+    if(w3.length){
+      const rows=w3.map(r=>{
+        const scope=r.bimestre==null?'ENSEMBLE DES PÉRIODES (orgs distinctes)':'Période '+r.bimestre+' 2026';
+        return r.cluster_code==null
+          ?`  [${scope}] ${fmtNum(r.orgs)} organisations (${fmtNum(r.ong_nationales)} ONG nat., ${fmtNum(r.ong_internationales)} ONG int., ${fmtNum(r.agences_onu)} ONU, ${fmtNum(r.gouvernement)} gouv.) · ${fmtNum(r.activites)} activités · ${fmtNum(r.communes_couvertes)} communes`
+          :`    ${r.bimestre||'toutes périodes'} · ${r.cluster_code}: ${fmtNum(r.orgs)} org. · ${fmtNum(r.activites)} activités`;
+      }).join('\n');
+      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — ${region} [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE (janvier-février, mars-avril): la présence s'exprime par période de deux mois, JAMAIS par mois individuel. Comptage = organisations principales + partenaires de mise en œuvre, dédupliqué. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
+    }else{gaps.push('Présence 3W');parts.push(`=== PRÉSENCE 3W ===\nAucune présence 3W pour ${region}.`);}
+  }
   } // end per-region loop
 
   // HPC PIN / CIBLE 2026 — national (portée nationale uniquement)
@@ -1154,6 +1194,20 @@ async function buildContext(question){
         :`  ${mois[r.mois]}: ${fmtNum(r.personnes)} personnes (${fmtNum(r.alertes)} alertes)`).join('\n');
       parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ${yr} — NATIONAL [précalculé] (source: GCORR, alertes validées) ===\nRÈGLE: chiffres officiels PRÉCALCULÉS de NOUVEAUX déplacements (flux, par date de choc) — citer tels quels. Distinct du stock de PDI (HPC). La ligne TOTAL = cumul annuel.\n${rows}`);
     }else{gaps.push(`Déplacements GCORR ${yr}`);parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ===\nAucune alerte ${yr}.`);}
+  }
+  // PRÉSENCE 3W — national
+  if((isAll||hasTable('partners_3w')) && (!route.regions || route.regions.length===0)){
+    const w3=await sb(`v_3w_presence?select=*&niveau=eq.national&order=bimestre.asc.nullsfirst,cluster_code.asc.nullsfirst&limit=60`);
+    console.log('[diag] 3w national rows:', w3.length);
+    if(w3.length){
+      const rows=w3.map(r=>{
+        const scope=r.bimestre==null?'ENSEMBLE DES PÉRIODES (orgs distinctes)':'Période '+r.bimestre+' 2026';
+        return r.cluster_code==null
+          ?`  [${scope}] ${fmtNum(r.orgs)} organisations (${fmtNum(r.ong_nationales)} ONG nat., ${fmtNum(r.ong_internationales)} ONG int., ${fmtNum(r.agences_onu)} ONU, ${fmtNum(r.gouvernement)} gouv.) · ${fmtNum(r.activites)} activités · ${fmtNum(r.communes_couvertes)} communes`
+          :`    ${r.bimestre||'toutes périodes'} · ${r.cluster_code}: ${fmtNum(r.orgs)} org. · ${fmtNum(r.activites)} activités`;
+      }).join('\n');
+      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — NATIONAL [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE (janvier-février, mars-avril): la présence s'exprime par période de deux mois, JAMAIS par mois individuel. Comptage = organisations principales + partenaires de mise en œuvre, dédupliqué. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
+    }
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
   console.timeEnd('[perf] 2-supabase-fetches');
