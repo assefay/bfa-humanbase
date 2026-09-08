@@ -809,7 +809,7 @@ hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par c
 hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.
 hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.
 cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.
-partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, mensuel jan-avril, vue v_3w_presence) — organisations par cluster × région × mois, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives.`;
+partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -1154,10 +1154,25 @@ async function buildContext(question){
           ?`  [${scope}] ${fmtNum(r.orgs)} organisations (${fmtNum(r.ong_nationales)} ONG nat., ${fmtNum(r.ong_internationales)} ONG int., ${fmtNum(r.agences_onu)} ONU, ${fmtNum(r.gouvernement)} gouv.) · ${fmtNum(r.activites)} activités · ${fmtNum(r.communes_couvertes)} communes`
           :`    ${r.bimestre||'toutes périodes'} · ${r.cluster_code}: ${fmtNum(r.orgs)} org. · ${fmtNum(r.activites)} activités`;
       }).join('\n');
-      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — ${region} [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE (janvier-février, mars-avril): la présence s'exprime par période de deux mois, JAMAIS par mois individuel. Comptage = organisations principales + partenaires de mise en œuvre, dédupliqué. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
+      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — ${region} [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE. Périodes présentes dans ces données: ${[...new Set(w3.map(r=>r.bimestre).filter(Boolean))].join(', ')}. La présence s'exprime par période de deux mois, JAMAIS par mois individuel: une question portant sur un mois isolé se répond par le bimestre qui le contient, en nommant explicitement la période (ex. « en mai » → période mai-juin). Comptage = organisations principales + partenaires de mise en œuvre (partenaire_moe), union dédupliquée et PRÉCALCULÉE — citer tel quel, ne jamais recalculer. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
     }else{gaps.push('Présence 3W');parts.push(`=== PRÉSENCE 3W ===\nAucune présence 3W pour ${region}.`);}
   }
   } // end per-region loop
+
+  // PRÉSENCE 3W — UNION MULTI-RÉGIONS (précalculée par la base, jamais additionnée)
+  if((isAll||hasTable('partners_3w')) && route.regions && route.regions.length>=2){
+    const argList='{'+route.regions.map(r=>'"'+String(r).replace(/"/g,'\\"')+'"').join(',')+'}';
+    const uni=await sb(`rpc/f_3w_union_regions?regions=${encodeURIComponent(argList)}`);
+    console.log('[diag] 3w union rows:', Array.isArray(uni)?uni.length:0, '| régions:', route.regions.join('+'));
+    if(Array.isArray(uni)&&uni.length){
+      const libelle=route.regions.join(' + ');
+      const rows=uni.map(r=>{
+        const scope=r.bimestre==null?'ENSEMBLE DES PÉRIODES':'Période '+r.bimestre+' 2026';
+        return `  [${scope}] ${fmtNum(r.orgs)} organisations distinctes (${fmtNum(r.ong_nationales)} ONG nat., ${fmtNum(r.ong_internationales)} ONG int., ${fmtNum(r.agences_onu)} ONU, ${fmtNum(r.gouvernement)} gouv.) · ${fmtNum(r.activites)} activités · ${fmtNum(r.provinces_couvertes)} provinces · ${fmtNum(r.communes_couvertes)} communes`;
+      }).join('\n');
+      parts.push(`=== PRÉSENCE 3W — TOTAL COMBINÉ ${libelle} [précalculé] (source: 3W inter-cluster) ===\nRÈGLE ABSOLUE: pour tout chiffre portant sur ces régions PRISES ENSEMBLE, utiliser UNIQUEMENT les valeurs ci-dessous. Ne JAMAIS additionner les totaux par région: une organisation présente dans plusieurs régions serait comptée plusieurs fois. La somme des blocs régionaux ci-dessus est FAUSSE comme total combiné. Ces valeurs sont des unions dédupliquées précalculées par la base — les citer telles quelles.\n${rows}`);
+    }
+  }
 
   // HPC PIN / CIBLE 2026 — national (portée nationale uniquement)
   if((isAll||hasTable('hpc_pin')) && (!route.regions || route.regions.length===0)){
@@ -1206,7 +1221,7 @@ async function buildContext(question){
           ?`  [${scope}] ${fmtNum(r.orgs)} organisations (${fmtNum(r.ong_nationales)} ONG nat., ${fmtNum(r.ong_internationales)} ONG int., ${fmtNum(r.agences_onu)} ONU, ${fmtNum(r.gouvernement)} gouv.) · ${fmtNum(r.activites)} activités · ${fmtNum(r.communes_couvertes)} communes`
           :`    ${r.bimestre||'toutes périodes'} · ${r.cluster_code}: ${fmtNum(r.orgs)} org. · ${fmtNum(r.activites)} activités`;
       }).join('\n');
-      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — NATIONAL [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE (janvier-février, mars-avril): la présence s'exprime par période de deux mois, JAMAIS par mois individuel. Comptage = organisations principales + partenaires de mise en œuvre, dédupliqué. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
+      parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — NATIONAL [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE. Périodes présentes dans ces données: ${[...new Set(w3.map(r=>r.bimestre).filter(Boolean))].join(', ')}. La présence s'exprime par période de deux mois, JAMAIS par mois individuel: une question portant sur un mois isolé se répond par le bimestre qui le contient, en nommant explicitement la période (ex. « en mai » → période mai-juin). Comptage = organisations principales + partenaires de mise en œuvre (partenaire_moe), union dédupliquée et PRÉCALCULÉE — citer tel quel, ne jamais recalculer. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
     }
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
