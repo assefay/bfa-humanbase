@@ -54,6 +54,13 @@ select{font-family:var(--fh);font-size:.8rem;padding:9px 12px;border-radius:var(
 .badge.pending{background:var(--off);color:var(--ink3)}
 .badge.delta-new{background:var(--red);color:white}
 .badge.delta-fixed{background:var(--teal);color:white}
+.badge.last{background:transparent;color:var(--ink3);border:1px dashed var(--border);font-weight:600}
+.btn-replay{font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:10px;border:1px solid var(--border);background:var(--white);color:var(--un-blue);cursor:pointer;text-transform:uppercase;letter-spacing:.04em;line-height:1.5}
+.btn-replay:hover:not(:disabled){background:var(--un-pale);border-color:var(--un-blue)}
+.btn-replay:disabled{opacity:.45;cursor:not-allowed;color:var(--ink3)}
+.spin{display:inline-block;width:9px;height:9px;border:2px solid var(--border);border-top-color:var(--un-blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.q-card.running{border-color:var(--un-blue)}
 .q-text{font-size:.9rem;font-weight:600;color:var(--ink);line-height:1.35}
 .q-reason{font-size:.78rem;color:var(--ink2);background:var(--off);border-left:3px solid var(--border);padding:8px 11px;border-radius:0 var(--r) var(--r) 0;line-height:1.45}
 .q-card.newfail .q-reason,.q-card.fail .q-reason{border-left-color:var(--red)}
@@ -123,6 +130,9 @@ let W = null;                   // window de l'iframe index.html
 let QUESTIONS = [];             // questions actives
 let PREV = {};                  // question_id -> verdict du dernier run terminé
 let REPLAY = {ids:[], runId:null};  // échecs à rejouer, amorcés au chargement depuis le dernier run
+let RUN_BY = 'assefa';          // demandé une seule fois, au premier lancement de suite
+let MANUAL = null;              // {id, counts} — run 'replay manuel', créé à la 1re relance unitaire
+let BUSY = false;               // une seule exécution à la fois : le proxy est rate-limité
 let STATE = {};                 // question_id -> {q, res, delta}
 let RUNNING = false;
 let RX_BAD = {};                // question_id -> motif(s) invalide(s), détectés au chargement
@@ -230,9 +240,9 @@ function verdictMap(last){
 
 async function loadPreviousRun(){ return verdictMap(await loadLastRun()); }
 
-async function createRun(runBy){
+async function createRun(runBy, note){
   const r = await api('qa_runs', {method:'POST', headers:{'Prefer':'return=representation'},
-    body: JSON.stringify({git_commit:GIT_COMMIT, model:MODEL, run_by:runBy, n_total:0, n_pass:0, n_fail:0, n_error:0})});
+    body: JSON.stringify({git_commit:GIT_COMMIT, model:MODEL, run_by:runBy, n_total:0, n_pass:0, n_fail:0, n_error:0, ...(note?{note}:{})})});
   if(!r.ok) throw new Error('création du run: HTTP '+r.status+' '+(await r.text()).slice(0,160));
   return (await r.json())[0];
 }
@@ -240,6 +250,13 @@ async function createRun(runBy){
 async function saveResult(row){
   const r = await api('qa_results', {method:'POST', body:JSON.stringify(row)});
   if(!r.ok) console.error('qa_results POST échoué:', r.status, (await r.text()).slice(0,200));
+}
+
+// Compteurs seuls, sans finished_at : un run de rejeu manuel reste 'non terminé'
+// et n'est donc jamais retenu par loadLastRun comme base de comparaison.
+async function patchRunCounters(runId, counts){
+  const r = await api(`qa_runs?id=eq.${runId}`, {method:'PATCH', body: JSON.stringify(counts)});
+  if(!r.ok) console.error('qa_runs PATCH compteurs échoué:', r.status);
 }
 
 async function finishRun(runId, counts){
@@ -340,16 +357,24 @@ function cardHtml(entry){
   const {q, res, delta} = entry;
   const v = res ? res.verdict : 'pending';
   const badges = {pass:'Réussi', fail:'Échec', error:'Erreur', pending:'En attente'};
-  const cls = delta === 'new' ? ' newfail' : (delta === 'fixed' ? ' fixed' : (v === 'fail' ? ' fail' : ''));
+  const cls = (delta === 'new' ? ' newfail' : (delta === 'fixed' ? ' fixed' : (v === 'fail' ? ' fail' : ''))) + (entry.running ? ' running' : '');
   const deltaBadge = delta === 'new'   ? '<span class="badge delta-new">Nouvel échec</span>'
                    : delta === 'fixed' ? '<span class="badge delta-fixed">Corrigé</span>' : '';
+  // Sans résultat dans cette session, afficher le verdict du dernier run terminé
+  // pour qu'une page fraîche ne soit pas vide.
+  const lastBadge = (!res && PREV[q.id]) ? `<span class="badge last">dernier : ${esc(PREV[q.id])}</span>` : '';
+  const running = !!entry.running;
   return `<div class="q-card${cls}" data-family="${esc(q.family)}" data-id="${q.id}">
     <div class="q-top">
       <span class="q-code">${esc(q.code)}</span>
       <span class="q-fam">${esc(q.family)}</span>
       <span class="badge ${v}">${badges[v]}</span>
       ${deltaBadge}
-      ${res && res.latency_ms != null ? `<span class="q-meta" style="margin-left:auto">${res.latency_ms} ms</span>` : ''}
+      ${lastBadge}
+      <span style="margin-left:auto;display:flex;align-items:center;gap:9px">
+        ${res && res.latency_ms != null ? `<span class="q-meta">${res.latency_ms} ms</span>` : ''}
+        <button class="btn-replay" data-id="${q.id}" ${running ? 'disabled' : ''}>${running ? '<span class="spin"></span>en cours…' : 'Rejouer'}</button>
+      </span>
     </div>
     <div class="q-text">${esc(q.question)}</div>
     ${res ? `<div class="q-reason">${esc(res.reason)}</div>` : ''}
@@ -364,6 +389,19 @@ function cardHtml(entry){
       <pre>${esc(res.context || '—')}</pre>
     </details>` : ''}
   </div>`;
+}
+
+// Remplace UNE carte sans reconstruire la liste : les autres gardent leur état,
+// y compris les blocs <details> ouverts.
+function renderCard(id){
+  const el = document.querySelector(`.q-card[data-id="${id}"]`);
+  if(!el || !STATE[id]) { renderAll(); return; }
+  el.outerHTML = cardHtml(STATE[id]);
+}
+
+// Active/désactive tous les boutons de rejeu sans re-rendre les cartes.
+function setReplayButtons(on){
+  document.querySelectorAll('.btn-replay').forEach(b => { b.disabled = !on; });
 }
 
 function renderAll(){
@@ -411,20 +449,53 @@ function setProgress(done, total, label){
 }
 
 // ---------------------------------------------------------------------------
+// Exécution d'UNE question — chemin unique partagé par la suite et le rejeu
+// unitaire : même appel modèle, même notation, même écriture en base.
+// ---------------------------------------------------------------------------
+async function runQuestion(q, runId){
+  let res;
+  if(RX_BAD[q.id]){
+    res = {verdict:'error', reason:'regex invalide — ' + RX_BAD[q.id].join(' · '),
+           answer:'', context:'', latency_ms:null, expected:[]};
+  } else {
+    try {
+      const exp = await loadExpected(q.id);
+      const out = await W.qaAnswer(q.question, q.mode);
+      const g   = grade(q, out.answer, exp);
+      res = {verdict:g.verdict, reason:g.reason, answer:out.answer, context:out.context,
+             latency_ms:out.latency_ms, expected:exp};
+    } catch(e){
+      res = {verdict:'error', reason:'Exception : ' + (e && e.message ? e.message : String(e)),
+             answer:'', context:'', latency_ms:null, expected:[]};
+    }
+  }
+  await saveResult({run_id:runId, question_id:q.id, answer:res.answer, expected:res.expected,
+                    verdict:res.verdict, reason:res.reason, latency_ms:res.latency_ms,
+                    context:res.context});
+  return res;
+}
+
+const bucketOf = v => 'n_' + (v === 'pass' ? 'pass' : v === 'fail' ? 'fail' : 'error');
+const deltaOf  = (before, now) => before === 'pass' && now !== 'pass' ? 'new'
+                               : before && before !== 'pass' && now === 'pass' ? 'fixed' : null;
+
+// ---------------------------------------------------------------------------
 // Exécution de la suite
 // ---------------------------------------------------------------------------
 async function runSuite(subset){
-  if(RUNNING) return;
-  RUNNING = true;
+  if(BUSY) return;
+  BUSY = true; RUNNING = true;
   $('btnRun').disabled = true; $('btnRerun').disabled = true;
+  setReplayButtons(false);
 
   const list = subset && subset.length ? subset : QUESTIONS;
-  const runBy = (window.prompt('Nom de la personne qui lance la suite ?', 'assefa') || 'assefa').trim();
+  RUN_BY = (window.prompt('Nom de la personne qui lance la suite ?', RUN_BY) || RUN_BY).trim();
   const startedAt = performance.now();
 
   let run;
-  try { run = await createRun(runBy); }
-  catch(e){ setProgress(0,0,'Impossible de créer le run : ' + e.message); RUNNING = false; $('btnRun').disabled = false; return; }
+  try { run = await createRun(RUN_BY); }
+  catch(e){ setProgress(0,0,'Impossible de créer le run : ' + e.message);
+           BUSY = false; RUNNING = false; $('btnRun').disabled = false; setReplayButtons(true); return; }
 
   $('commitLbl').textContent = `run #${run.id} · commit ${GIT_COMMIT} · ${MODEL}`;
   PREV = await loadPreviousRun();
@@ -438,52 +509,77 @@ async function runSuite(subset){
 
   for(const q of list){
     setProgress(done, list.length, `Question ${done+1}/${list.length} — ${q.code}…`);
-    let res;
-    if(RX_BAD[q.id]){
-      res = {verdict:'error', reason:'regex invalide — ' + RX_BAD[q.id].join(' · '),
-             answer:'', context:'', latency_ms:null, expected:[]};
-      counts.n_error++;
-      STATE[q.id] = {q, res, delta:null};
-      await saveResult({run_id:run.id, question_id:q.id, answer:'', expected:[],
-                        verdict:res.verdict, reason:res.reason, latency_ms:null});
-      done++; renderAll(); updateKpis(startedAt);
-      continue;
-    }
-    try {
-      const exp = await loadExpected(q.id);
-      const out = await W.qaAnswer(q.question, q.mode);
-      const g   = grade(q, out.answer, exp);
-      res = {verdict:g.verdict, reason:g.reason, answer:out.answer, context:out.context,
-             latency_ms:out.latency_ms, expected:exp};
-    } catch(e){
-      res = {verdict:'error', reason:'Exception : ' + (e && e.message ? e.message : String(e)),
-             answer:'', context:'', latency_ms:null, expected:[]};
-    }
-
-    counts['n_' + (res.verdict === 'pass' ? 'pass' : res.verdict === 'fail' ? 'fail' : 'error')]++;
-
-    const before = PREV[q.id];
-    const delta = before === 'pass' && res.verdict !== 'pass' ? 'new'
-                : before && before !== 'pass' && res.verdict === 'pass' ? 'fixed' : null;
-
-    STATE[q.id] = {q, res, delta};
-    await saveResult({run_id:run.id, question_id:q.id, answer:res.answer, expected:res.expected,
-                      verdict:res.verdict, reason:res.reason, latency_ms:res.latency_ms,
-                      context:res.context});
-
+    const res = await runQuestion(q, run.id);
+    counts[bucketOf(res.verdict)]++;
+    STATE[q.id] = {q, res, delta: deltaOf(PREV[q.id], res.verdict)};
     done++;
     renderAll();
     updateKpis(startedAt);
-    if(done < list.length) await new Promise(r => setTimeout(r, PAUSE_MS));
+    // aucun appel modèle pour une question au motif invalide : pause inutile
+    if(done < list.length && res.latency_ms != null) await new Promise(r => setTimeout(r, PAUSE_MS));
   }
 
   await finishRun(run.id, counts);
   setProgress(done, list.length,
     `Terminé — ${counts.n_pass} réussis, ${counts.n_fail} échecs, ${counts.n_error} erreurs (run #${run.id}).`);
-  RUNNING = false;
+  BUSY = false; RUNNING = false;
   $('btnRun').disabled = false;
+  setReplayButtons(true);
   setReplay(Object.values(STATE).filter(e => e.res && e.res.verdict !== 'pass').map(e => e.q.id), run.id);
 }
+
+// ---------------------------------------------------------------------------
+// Rejeu d'une seule question
+// ---------------------------------------------------------------------------
+// Un seul run « replay manuel » par session de page, créé à la première relance
+// et réutilisé ensuite : les runs de suite restent la seule base du diff.
+async function manualRun(){
+  if(MANUAL) return MANUAL;
+  const row = await createRun(RUN_BY, 'replay manuel');
+  MANUAL = {id: row.id, counts:{n_total:0, n_pass:0, n_fail:0, n_error:0}};
+  return MANUAL;
+}
+
+async function replayOne(id){
+  if(BUSY) return;
+  const entry = STATE[id];
+  if(!entry) return;
+  BUSY = true;
+  setReplayButtons(false);
+  $('btnRun').disabled = true; $('btnRerun').disabled = true;
+  entry.running = true;
+  renderCard(id);
+
+  const startedAt = performance.now();
+  try {
+    const man = await manualRun();
+    setProgress(0, 1, `Rejeu unitaire — ${entry.q.code}…`);
+    const res = await runQuestion(entry.q, man.id);
+    man.counts.n_total++;
+    man.counts[bucketOf(res.verdict)]++;
+    await patchRunCounters(man.id, man.counts);
+    STATE[id] = {q: entry.q, res, delta: deltaOf(PREV[id], res.verdict), running:false};
+    setProgress(1, 1, `${entry.q.code} — ${res.verdict} (run manuel #${man.id}).`);
+  } catch(e){
+    const msg = e && e.message ? e.message : String(e);
+    STATE[id] = {q: entry.q, running:false, delta:null,
+                 res:{verdict:'error', reason:'Rejeu impossible : ' + msg,
+                      answer:'', context:'', latency_ms:null, expected:[]}};
+    setProgress(0, 1, 'Rejeu impossible : ' + msg);
+  }
+  renderCard(id);
+  updateKpis(startedAt);
+  BUSY = false;
+  setReplayButtons(true);
+  $('btnRun').disabled = false;
+  setReplay(REPLAY.ids, REPLAY.runId);
+}
+
+// Délégation : les cartes sont re-rendues, un écouteur par bouton ne survivrait pas.
+$('results').addEventListener('click', e => {
+  const b = e.target.closest('.btn-replay');
+  if(b && !b.disabled) replayOne(Number(b.dataset.id));
+});
 
 // ---------------------------------------------------------------------------
 // Démarrage
