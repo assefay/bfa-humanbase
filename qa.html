@@ -115,7 +115,7 @@ pre{font-family:var(--fm);font-size:.7rem;line-height:1.5;background:var(--off);
 // ---------------------------------------------------------------------------
 // Constantes
 // ---------------------------------------------------------------------------
-const GIT_COMMIT = 'unknown';
+let GIT_COMMIT = 'unknown';   // renseigné au démarrage depuis l'API GitHub
 const MODEL = 'claude-haiku-4-5-20251001';
 const PAUSE_MS = 1000;          // pause entre deux questions (proxy rate-limité)
 
@@ -124,7 +124,7 @@ let QUESTIONS = [];             // questions actives
 let PREV = {};                  // question_id -> verdict du dernier run terminé
 let STATE = {};                 // question_id -> {q, res, delta}
 let RUNNING = false;
-let RX_OVERESCAPED = [];        // codes dont les regex sont sur-échappées en base
+let RX_BAD = {};                // question_id -> motif(s) invalide(s), détectés au chargement
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -147,11 +147,53 @@ function toRegExp(pattern, flags='i'){
   return new RegExp(collapsed, flags);
 }
 
+// Constructions propres à Postgres, sans équivalent en JavaScript : un motif qui
+// les contient ne lèverait pas d'erreur, il matcherait simplement autre chose.
+const PG_ONLY = ['m','M','y'];
+
+// Auto-contrôle exécuté avant la suite : un motif illisible ne doit JAMAIS être
+// noté silencieusement — la question passe en 'error', pas en 'pass'.
+function checkRegexes(q){
+  const p = q.check_params || {};
+  const problems = [];
+  for(const key of ['row_regex','require_regex','forbid_regex']){
+    const raw = p[key];
+    if(!raw) continue;
+    const collapsed = raw.split(BS+BS).join(BS);
+    const pg = PG_ONLY.filter(c => collapsed.includes(BS + c));
+    if(pg.length) problems.push(`${key} : construction Postgres ${pg.map(c=>BS+c).join(', ')} sans équivalent JavaScript`);
+    try { new RegExp(collapsed, 'i'); }
+    catch(e){ problems.push(`${key} : motif non compilable (${e.message})`); }
+  }
+  return problems;
+}
+
+// Motifs encore sur-échappés après chargement : le repli reste un filet de
+// sécurité silencieux, mais une occurrence signale une donnée à corriger.
+function stillOverEscaped(q){
+  const p = q.check_params || {};
+  return ['row_regex','require_regex','forbid_regex']
+    .filter(k => p[k] && p[k].includes(BS+BS));
+}
+
 // ---------------------------------------------------------------------------
 // Accès données
 // ---------------------------------------------------------------------------
 const api = (path, opts={}) => fetch(`${W.SB}/rest/v1/${path}`,
   {...opts, headers:{...W.H, 'Content-Type':'application/json', ...(opts.headers||{})}});
+
+// Attribution du run : SHA court de main, lu à l'exécution (aucune étape de build).
+// L'API GitHub non authentifiée est limitée en débit : en cas d'échec on retombe
+// sur 'unknown' plutôt que de bloquer la suite.
+async function loadGitCommit(){
+  try {
+    const r = await fetch('https://api.github.com/repos/assefay/bfa-humanbase/commits/main',
+      {headers:{'Accept':'application/vnd.github+json'}});
+    if(!r.ok) return 'unknown';
+    const j = await r.json();
+    return (j.sha || '').substring(0,7) || 'unknown';
+  } catch(e){ return 'unknown'; }
+}
 
 async function loadQuestions(){
   const r = await api('qa_questions?select=*&active=is.true&order=id');
@@ -377,6 +419,16 @@ async function runSuite(subset){
   for(const q of list){
     setProgress(done, list.length, `Question ${done+1}/${list.length} — ${q.code}…`);
     let res;
+    if(RX_BAD[q.id]){
+      res = {verdict:'error', reason:'regex invalide — ' + RX_BAD[q.id].join(' · '),
+             answer:'', context:'', latency_ms:null, expected:[]};
+      counts.n_error++;
+      STATE[q.id] = {q, res, delta:null};
+      await saveResult({run_id:run.id, question_id:q.id, answer:'', expected:[],
+                        verdict:res.verdict, reason:res.reason, latency_ms:null});
+      done++; renderAll(); updateKpis(startedAt);
+      continue;
+    }
     try {
       const exp = await loadExpected(q.id);
       const out = await W.qaAnswer(q.question, q.mode);
@@ -430,22 +482,27 @@ $('app').addEventListener('load', async () => {
     $('appStatus').textContent = 'initialisation…';
     await W.qaReady;
 
+    GIT_COMMIT = await loadGitCommit();
     QUESTIONS = await loadQuestions();
     QUESTIONS.forEach(q => { STATE[q.id] = {q, res:null, delta:null}; });
 
     const fams = [...new Set(QUESTIONS.map(q => q.family))].sort();
     fams.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; $('famFilter').appendChild(o); });
 
-    // Signale les regex sur-échappées en base (\\d au lieu de \d) : elles sont
-    // repliées à l'exécution, mais la donnée reste à corriger.
-    RX_OVERESCAPED = QUESTIONS.filter(q => {
-      const p = q.check_params || {};
-      return [p.row_regex, p.require_regex, p.forbid_regex].some(x => x && x.includes(BS+BS));
-    }).map(q => q.code);
-    if(RX_OVERESCAPED.length){
-      $('rxWarn').innerHTML = `<div class="warn"><strong>Regex sur-échappées en base</strong> — ${RX_OVERESCAPED.length} question(s) stockent <code>${BS}${BS}d</code> au lieu de <code>${BS}d</code> : ${RX_OVERESCAPED.join(', ')}. Le runner replie les doubles antislashs pour que le contrôle fonctionne ; la valeur en base reste à corriger.</div>`;
-    }
+    // Auto-contrôle des motifs, avant toute exécution.
+    RX_BAD = {};
+    QUESTIONS.forEach(q => { const pb = checkRegexes(q); if(pb.length) RX_BAD[q.id] = pb; });
+    const overEsc = QUESTIONS.filter(q => stillOverEscaped(q).length).map(q => q.code);
 
+    const alerts = [];
+    if(Object.keys(RX_BAD).length){
+      const codes = QUESTIONS.filter(q => RX_BAD[q.id]).map(q => `${q.code} (${RX_BAD[q.id].join(' ; ')})`);
+      alerts.push(`<strong>Motifs invalides</strong> — ${codes.length} question(s) ne seront pas notées et passeront en « erreur » : ${codes.join(' · ')}.`);
+    }
+    if(overEsc.length){
+      alerts.push(`<strong>Regex sur-échappées en base</strong> — ${overEsc.length} question(s) stockent encore <code>${BS}${BS}d</code> au lieu de <code>${BS}d</code> : ${overEsc.join(', ')}. Le repli automatique les rend fonctionnelles ; la valeur en base reste à corriger.`);
+    }
+    $('rxWarn').innerHTML = alerts.length ? alerts.map(a => `<div class="warn">${a}</div>`).join('') : '';
     PREV = await loadPreviousRun();
     renderAll();
 
