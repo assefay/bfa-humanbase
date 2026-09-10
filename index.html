@@ -1542,6 +1542,9 @@ function toast(msg,type='ok'){const t=document.getElementById('toast');t.textCon
 
 
 
+// Exposed for qa.html — const declarations are script-scoped, not on window
+window.SB = SB; window.H = H; window.PROXY = PROXY;
+
 // Exposed for qa.html — runs the exact production path (router → context → model)
 window.qaAnswer = async function(question, mode='rapide'){
   const t0=performance.now();
