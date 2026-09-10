@@ -1264,7 +1264,7 @@ async function buildContext(question){
     ['pillage_betail',         wordRx('pillages?|b[ée]tail|vols?\\s+de\\s+b[ée]tail|razzias?'), 'Pillages et vol de bétail'],
   ];
   const themes = THEME_RULES.filter(([,rx])=>rx.test(question));
-  const wantsList = wordRx('chaque|liste[rz]?|tous\\s+les|toutes\\s+les|d[ée]tail|d[ée]taill').test(question);
+  const wantsList = wordRx('chaque|liste[rz]?|tous\\s+les|toutes\\s+les|d[ée]tail|d[ée]taill|d[ée]taill?[ée]?e?s?').test(question);
   if(themes.length && (isAll||hasTable('ocha_field_incidents')||hasTable('acled_incidents'))){
     const yrs = (route.years && route.years.length ? route.years : [route.year && route.year!=='null' ? route.year : '2026']);
     const regs = route.regions && route.regions.length ? route.regions : null;
