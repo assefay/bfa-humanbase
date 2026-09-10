@@ -674,12 +674,18 @@ Dans les deux parties : reste strictement fidèle aux données fournies. N'inven
 
 function detectIntent(question){
   const q=question.toLowerCase();
+  // Les clés de REGION_MAP sont désaccentuées par _stripKey (Koulsé -> koulse) :
+  // on compare donc à une copie désaccentuée de la question. `q` garde ses accents,
+  // il sert aux tests de mots-clés accentués plus bas.
+  const qKey=_stripKey(question);
   let region=null,year=null;
   const topicScores={security:0,displacement:0,response:0,access:0,zones:0};
   for(const[alias,canonical]of Object.entries(REGION_MAP)){
-    // Only match whole words to avoid false positives (e.g. "di" in "difficile")
-    const regex = new RegExp(`\\b${alias}\\b`, 'i');
-    if(regex.test(q)){region=canonical;break;}
+    // Mots entiers uniquement, pour éviter les faux positifs (ex. "di" dans "difficile").
+    // \b est ASCII-only et échoue à côté d'une lettre accentuée : on borne avec des
+    // classes Unicode.
+    const regex = new RegExp(`(?<![\\p{L}\\p{N}])${alias}(?![\\p{L}\\p{N}])`, 'iu');
+    if(regex.test(qKey)){region=canonical;break;}
   }
   const ym=q.match(/\b(2024|2025|2026)\b/);
   const yAll=[...new Set(q.match(/\b(2024|2025|2026)\b/g)||[])].sort();
@@ -1241,20 +1247,24 @@ async function buildContext(question){
     }
   }
   // THÈMES INCIDENTS (vues précalculées) — toutes portées
+  // Un seul constructeur de motif pour tous les thèmes : \b est ASCII-only et ne
+  // matche jamais à côté d'une lettre accentuée ("santé ", "écoles"). Passer par
+  // wordRx garantit que le défaut ne peut pas réapparaître thème par thème.
+  const wordRx = body => new RegExp(`(?<![\\p{L}\\p{N}])(?:${body})(?![\\p{L}\\p{N}])`, 'iu');
   const THEME_RULES = [
-    ['eei', /\b(eei|ied|engins?\s+explosifs?|mines?\s+(artisanales?|antipersonnel)|explosions?)\b/i, 'EEI / mines'],
-    ['drone', /\b(drones?|frappes?\s+(a[ée]riennes?|de\s+drone))\b/i, 'Frappes de drones'],
-    ['convoi', /\b(convois?|escortes?)\b/i, 'Convois / escortes (attaques et perturbations)'],
-    ['vbg', /\b(vbg|gbv|violences?\s+bas[ée]es?\s+sur\s+le\s+genre|viols?|violences?\s+sexuelles?)\b/i, 'Violences basées sur le genre'],
-    ['femmes_filles_victimes', /\b(femmes?|filles?)\b/i, 'Femmes et filles parmi les victimes'],
-    ['sante', /\b(sant[ée]|csps|h[ôo]pita(l|ux)|centres?\s+de\s+sant[ée])\b/i, 'Structures et agents de santé'],
-    ['education', /\b([ée]coles?|enseignants?|[ée]l[èe]ves?|scolaire|[ée]ducation)\b/i, 'Éducation'],
-    ['humanitaires', /\b(humanitaires?|ong|travailleurs?\s+humanitaires?|acteurs?\s+humanitaires?)\b/i, 'Acteurs humanitaires'],
-    ['enlevement', /\b(enl[èe]vements?|enlev[ée]e?s?|kidnapping|rapts?)\b/i, 'Enlèvements'],
-    ['pillage_betail', /\b(pillages?|b[ée]tail|vols?\s+de\s+b[ée]tail|razzias?)\b/i, 'Pillages et vol de bétail'],
+    ['eei',                    wordRx('eei|ied|engins?\\s+explosifs?|mines?\\s+(artisanales?|antipersonnel)|explosions?'), 'EEI / mines'],
+    ['drone',                  wordRx('drones?|frappes?\\s+(a[ée]riennes?|de\\s+drone)'), 'Frappes de drones'],
+    ['convoi',                 wordRx('convois?|escortes?'), 'Convois / escortes (attaques et perturbations)'],
+    ['vbg',                    wordRx('vbg|gbv|violences?\\s+bas[ée]es?\\s+sur\\s+le\\s+genre|viols?|violences?\\s+sexuelles?'), 'Violences basées sur le genre'],
+    ['femmes_filles_victimes', wordRx('femmes?|filles?'), 'Femmes et filles parmi les victimes'],
+    ['sante',                  wordRx('sant[ée]|csps|h[ôo]pita(l|ux)|centres?\\s+de\\s+sant[ée]'), 'Structures et agents de santé'],
+    ['education',              wordRx('[ée]coles?|enseignants?|[ée]l[èe]ves?|scolaire|[ée]ducation'), 'Éducation'],
+    ['humanitaires',           wordRx('humanitaires?|ong|travailleurs?\\s+humanitaires?|acteurs?\\s+humanitaires?'), 'Acteurs humanitaires'],
+    ['enlevement',             wordRx('enl[èe]vements?|enlev[ée]e?s?|kidnapping|rapts?'), 'Enlèvements'],
+    ['pillage_betail',         wordRx('pillages?|b[ée]tail|vols?\\s+de\\s+b[ée]tail|razzias?'), 'Pillages et vol de bétail'],
   ];
   const themes = THEME_RULES.filter(([,rx])=>rx.test(question));
-  const wantsList = /\b(chaque|liste[rz]?|tous\s+les|toutes\s+les|d[ée]tail|d[ée]taill)/i.test(question);
+  const wantsList = wordRx('chaque|liste[rz]?|tous\\s+les|toutes\\s+les|d[ée]tail|d[ée]taill').test(question);
   if(themes.length && (isAll||hasTable('ocha_field_incidents')||hasTable('acled_incidents'))){
     const yrs = (route.years && route.years.length ? route.years : [route.year && route.year!=='null' ? route.year : '2026']);
     const regs = route.regions && route.regions.length ? route.regions : null;
