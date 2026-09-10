@@ -1210,6 +1210,30 @@ async function buildContext(question){
       parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ${yr} — NATIONAL [précalculé] (source: GCORR, alertes validées) ===\nRÈGLE: chiffres officiels PRÉCALCULÉS de NOUVEAUX déplacements (flux, par date de choc) — citer tels quels. Distinct du stock de PDI (HPC). La ligne TOTAL = cumul annuel.\n${rows}`);
     }else{gaps.push(`Déplacements GCORR ${yr}`);parts.push(`=== NOUVEAUX DÉPLACEMENTS GCORR ===\nAucune alerte ${yr}.`);}
   }
+  // INCIDENTS — national (OCHA terrain + ACLED, portée nationale uniquement)
+  if((isAll||hasTable('ocha_field_incidents')||hasTable('acled_incidents')) && (!route.regions || route.regions.length===0)){
+    const yr = route.year && route.year!=='null' ? route.year : '2026';
+
+    // OCHA field incidents — national aggregate + recent examples
+    const oAgg=await sb(`v_ocha_incidents_summary?select=*&region=eq.NATIONAL&annee=eq.${yr}`);
+    const oRec=await sb(`ocha_field_incidents?select=incident_date,region,adm3_commune,location,incident_type,perpetrator,killed_civilians,wounded,displaced_persons,description&incident_date=gte.${yr}-01-01&incident_date=lte.${yr}-12-31&order=incident_date.desc&limit=10`);
+    console.log('[diag] ocha incidents NATIONAL view rows:', oAgg.length, '| recents:', oRec.length);
+    if(oAgg.length){
+      const rows=oAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.annee}: ${fmtNum(r.incidents)} incidents — ${fmtNum(r.civils_tues)} civils tués · ${fmtNum(r.blesses)} blessés · ${fmtNum(r.deplaces_rapportes)} déplacés rapportés — attaques armées ${fmtNum(r.attaques_armees)} · EEI ${fmtNum(r.eei)} · enlèvements ${fmtNum(r.enlevements)} · déplacements ${fmtNum(r.deplacements)} · pillages ${fmtNum(r.pillages)} · autres ${fmtNum(r.autres)} · période ${r.premier_incident}→${r.dernier_incident}`).join('\n');
+      const recents=oRec.map(r=>`  ${r.incident_date} [${r.region}|${r.adm3_commune||'?'}/${r.location||'?'}] ${r.incident_type} — ${r.perpetrator||'auteur inconnu'} — ${fmtNum(r.killed_civilians||0)} civils tués, ${fmtNum(r.wounded||0)} blessés${r.displaced_persons?', '+fmtNum(r.displaced_persons)+' déplacés':''} — ${(r.description||'').substring(0,220)}`).join('\n');
+      parts.push(`=== INCIDENTS TERRAIN OCHA ${yr} — NATIONAL [précalculé] (source: rapports hebdomadaires OCHA) ===\nRÈGLE: totaux PRÉCALCULÉS — citer tels quels, ne jamais recompter. Source terrain complémentaire d'ACLED (méthodologies différentes, ne pas fusionner les totaux). Les 10 incidents récents sont des EXEMPLES.\nAGRÉGATS:\n${rows}\nINCIDENTS RÉCENTS (10 derniers):\n${recents}`);
+    }else{gaps.push(`Incidents terrain OCHA ${yr}`);parts.push(`=== INCIDENTS TERRAIN OCHA ===\nAucun incident terrain ${yr} au niveau national.`);}
+
+    // ACLED — national aggregate + recent examples
+    const aAgg=await sb(`v_acled_summary?select=*&niveau=eq.national&year=eq.${yr}`);
+    const aRec=await sb(`acled_incidents?select=event_date,adm1_name,adm2_name,location,event_type,sub_event_type,actor1,fatalities,civilian_targeting&year=eq.${yr}&order=event_date.desc&limit=10`);
+    console.log('[diag] acled NATIONAL view rows:', aAgg.length, '| recents:', aRec.length);
+    if(aAgg.length){
+      const rows=aAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.year}: ${fmtNum(r.evenements)} événements, ${fmtNum(r.morts)} morts — batailles ${fmtNum(r.batailles)} (${fmtNum(r.morts_batailles)} morts) · violence/civils ${fmtNum(r.violence_civils)} (${fmtNum(r.morts_violence_civils)} morts) · explosions/EEI/drones ${fmtNum(r.explosions)} (${fmtNum(r.morts_explosions)} morts) · ciblage civils ${fmtNum(r.ciblage_civils)} évts (${fmtNum(r.morts_ciblage_civils)} morts) · période ${r.premier_evenement}→${r.dernier_evenement}`).join('\n');
+      const recents=aRec.map(r=>`  ${r.event_date} [${r.adm1_name}|${r.adm2_name}/${r.location}] ${r.sub_event_type||r.event_type} — ${r.actor1||'?'} — ${fmtNum(r.fatalities||0)} morts${r.civilian_targeting?' (ciblage civils)':''}`).join('\n');
+      parts.push(`=== INCIDENTS ACLED ${yr} — NATIONAL [précalculé] (source: ACLED) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les 10 événements récents sont des EXEMPLES, pas l'exhaustivité: les totaux font foi.\nAGRÉGATS:\n${rows}\nÉVÉNEMENTS RÉCENTS (10 derniers):\n${recents}`);
+    }else{gaps.push(`Incidents ACLED ${yr}`);parts.push(`=== INCIDENTS ACLED ===\nAucune donnée ACLED ${yr} au niveau national.`);}
+  }
   // PRÉSENCE 3W — national
   if((isAll||hasTable('partners_3w')) && (!route.regions || route.regions.length===0)){
     const w3=await sb(`v_3w_presence?select=*&niveau=eq.national&order=bimestre.asc.nullsfirst,cluster_code.asc.nullsfirst&limit=60`);
