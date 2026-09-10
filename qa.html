@@ -122,6 +122,7 @@ const PAUSE_MS = 1000;          // pause entre deux questions (proxy rate-limit�
 let W = null;                   // window de l'iframe index.html
 let QUESTIONS = [];             // questions actives
 let PREV = {};                  // question_id -> verdict du dernier run terminé
+let REPLAY = {ids:[], runId:null};  // échecs à rejouer, amorcés au chargement depuis le dernier run
 let STATE = {};                 // question_id -> {q, res, delta}
 let RUNNING = false;
 let RX_BAD = {};                // question_id -> motif(s) invalide(s), détectés au chargement
@@ -208,18 +209,26 @@ async function loadExpected(qid){
   return Array.isArray(j) ? j : (j==null ? [] : [j]);
 }
 
-async function loadPreviousRun(){
-  const r = await api('qa_runs?select=id&finished_at=not.is.null&order=id.desc&limit=1');
-  if(!r.ok) return {};
+// Dernier run TERMINÉ et l'intégralité de ses résultats. Les lignes servent deux
+// usages : la comparaison run-à-run (PREV, qui a besoin des 'pass' pour repérer
+// les nouveaux échecs) et l'amorçage de la liste de rejeu (les non-'pass').
+async function loadLastRun(){
+  const r = await api('qa_runs?select=id,started_at,git_commit&finished_at=not.is.null&order=id.desc&limit=1');
+  if(!r.ok) return null;
   const runs = await r.json();
-  if(!runs.length) return {};
+  if(!runs.length) return null;
   const rr = await api(`qa_results?select=question_id,verdict&run_id=eq.${runs[0].id}`);
-  if(!rr.ok) return {};
-  const rows = await rr.json();
+  if(!rr.ok) return null;
+  return {...runs[0], rows: await rr.json()};
+}
+
+function verdictMap(last){
   const map = {};
-  rows.forEach(x => { map[x.question_id] = x.verdict; });
+  if(last) last.rows.forEach(x => { map[x.question_id] = x.verdict; });
   return map;
 }
+
+async function loadPreviousRun(){ return verdictMap(await loadLastRun()); }
 
 async function createRun(runBy){
   const r = await api('qa_runs', {method:'POST', headers:{'Prefer':'return=representation'},
@@ -385,6 +394,17 @@ function updateKpis(startedAt){
   $('kpiRow').style.display = '';
 }
 
+// Met à jour la liste de rejeu et le libellé du bouton. runId non nul = liste
+// héritée d'un run précédent ; nul = échecs du run courant.
+function setReplay(ids, runId){
+  REPLAY = {ids:[...new Set(ids)], runId};
+  const b = $('btnRerun');
+  b.disabled = !REPLAY.ids.length || RUNNING;
+  b.textContent = REPLAY.ids.length
+    ? `Rejouer les échecs seulement (${REPLAY.ids.length}${runId ? ` — run #${runId}` : ''})`
+    : 'Rejouer les échecs seulement';
+}
+
 function setProgress(done, total, label){
   $('progFill').style.width = total ? (done/total*100) + '%' : '0';
   $('progLbl').textContent = label;
@@ -462,7 +482,7 @@ async function runSuite(subset){
     `Terminé — ${counts.n_pass} réussis, ${counts.n_fail} échecs, ${counts.n_error} erreurs (run #${run.id}).`);
   RUNNING = false;
   $('btnRun').disabled = false;
-  $('btnRerun').disabled = false;
+  setReplay(Object.values(STATE).filter(e => e.res && e.res.verdict !== 'pass').map(e => e.q.id), run.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -471,7 +491,7 @@ async function runSuite(subset){
 $('famFilter').addEventListener('change', renderAll);
 $('btnRun').addEventListener('click', () => runSuite(null));
 $('btnRerun').addEventListener('click', () => {
-  const failed = Object.values(STATE).filter(e => e.res && e.res.verdict !== 'pass').map(e => e.q);
+  const failed = REPLAY.ids.map(id => QUESTIONS.find(q => q.id === id)).filter(Boolean);
   if(!failed.length){ setProgress(0,0,'Aucun échec à rejouer.'); return; }
   runSuite(failed);
 });
@@ -504,7 +524,10 @@ $('app').addEventListener('load', async () => {
       alerts.push(`<strong>Regex sur-échappées en base</strong> — ${overEsc.length} question(s) stockent encore <code>${BS}${BS}d</code> au lieu de <code>${BS}d</code> : ${overEsc.join(', ')}. Le repli automatique les rend fonctionnelles ; la valeur en base reste à corriger.`);
     }
     $('rxWarn').innerHTML = alerts.length ? alerts.map(a => `<div class="warn">${a}</div>`).join('') : '';
-    PREV = await loadPreviousRun();
+    const last = await loadLastRun();
+    PREV = verdictMap(last);
+    setReplay(last ? last.rows.filter(r => r.verdict !== 'pass').map(r => r.question_id) : [],
+              last ? last.id : null);
     renderAll();
 
     $('appDot').className = 'db-dot ok';
