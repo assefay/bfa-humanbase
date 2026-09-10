@@ -682,13 +682,14 @@ function detectIntent(question){
     if(regex.test(q)){region=canonical;break;}
   }
   const ym=q.match(/\b(2024|2025|2026)\b/);
+  const yAll=[...new Set(q.match(/\b(2024|2025|2026)\b/g)||[])].sort();
   if(ym)year=ym[1];
   else if(q.includes('cette année')||q.includes('en cours')||q.includes('actuel'))year='2026';
   else if(q.includes("l'an dernier")||q.includes('année dernière')||q.includes('last year'))year='2025';
   for(const[kw,[topic,weight]]of Object.entries(TOPIC_WEIGHTS)){if(q.includes(kw))topicScores[topic]+=weight;}
   const topics=Object.entries(topicScores).filter(([,s])=>s>0).map(([t])=>t);
   const isAll=topics.length===0||q.includes('situation')||q.includes('général')||q.includes('bilan')||q.includes('overview')||q.includes('rapport')||q.includes('compare');
-  return{region,year,topics:isAll?['all']:topics};
+  return{region,year,years:yAll,topics:isAll?['all']:topics};
 }
 
 // ══ KNOWLEDGE BASE — load relevant entries ════════════════════════════════
@@ -790,7 +791,7 @@ function enforceTerminologyRules(text) {
 
 async function routeQuery(question) {
   await geoMapsReady;
-  const {region, year} = detectIntent(question);
+  const {region, year, years} = detectIntent(question);
   const place = resolvePlace(question);        // {name, level, region} | null
   const shapeSeed = detectShape(question);     // deterministic fallback shape
   
@@ -863,6 +864,7 @@ partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIE
       regions: resolvedRegions,
       unrecognizedRegions,
       year: parsed.year && parsed.year !== 'null' ? parsed.year : year,
+      years,
       shape: parsed.shape && SHAPE_INSTRUCTIONS[parsed.shape] ? parsed.shape : shapeSeed,
       place: place,   // {name, level, region} | null — for precise scope reporting
       reason: parsed.reason || ''
@@ -893,6 +895,7 @@ partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIE
       regions: fallbackRegions,
       unrecognizedRegions: [],
       year,
+      years,
       shape: shapeSeed,
       place: place,
       reason: 'fallback'
@@ -1213,27 +1216,29 @@ async function buildContext(question){
   }
   // INCIDENTS — national (OCHA terrain + ACLED, portée nationale uniquement)
   if((isAll||hasTable('ocha_field_incidents')||hasTable('acled_incidents')) && (!route.regions || route.regions.length===0)){
-    const yr = route.year && route.year!=='null' ? route.year : '2026';
+    const yrs = (route.years && route.years.length ? route.years : [route.year && route.year!=='null' ? route.year : '2026']);
+    for(const yr of yrs){
 
-    // OCHA field incidents — national aggregate + recent examples
-    const oAgg=await sb(`v_ocha_incidents_summary?select=*&region=eq.NATIONAL&annee=eq.${yr}`);
-    const oRec=await sb(`ocha_field_incidents?select=incident_date,region,adm3_commune,location,incident_type,perpetrator,killed_civilians,wounded,displaced_persons,description&incident_date=gte.${yr}-01-01&incident_date=lte.${yr}-12-31&order=incident_date.desc&limit=10`);
-    console.log('[diag] ocha incidents NATIONAL view rows:', oAgg.length, '| recents:', oRec.length);
-    if(oAgg.length){
-      const rows=oAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.annee}: ${fmtNum(r.incidents)} incidents — ${fmtNum(r.civils_tues)} civils tués · ${fmtNum(r.blesses)} blessés · ${fmtNum(r.deplaces_rapportes)} déplacés rapportés — attaques armées ${fmtNum(r.attaques_armees)} · EEI ${fmtNum(r.eei)} · enlèvements ${fmtNum(r.enlevements)} · déplacements ${fmtNum(r.deplacements)} · pillages ${fmtNum(r.pillages)} · autres ${fmtNum(r.autres)} · période ${r.premier_incident}→${r.dernier_incident}`).join('\n');
-      const recents=oRec.map(r=>`  ${r.incident_date} [${r.region}|${r.adm3_commune||'?'}/${r.location||'?'}] ${r.incident_type} — ${r.perpetrator||'auteur inconnu'} — ${fmtNum(r.killed_civilians||0)} civils tués, ${fmtNum(r.wounded||0)} blessés${r.displaced_persons?', '+fmtNum(r.displaced_persons)+' déplacés':''} — ${(r.description||'').substring(0,220)}`).join('\n');
-      parts.push(`=== INCIDENTS TERRAIN OCHA ${yr} — NATIONAL [précalculé] (source: rapports hebdomadaires OCHA) ===\nRÈGLE: totaux PRÉCALCULÉS — citer tels quels, ne jamais recompter. Source terrain complémentaire d'ACLED (méthodologies différentes, ne pas fusionner les totaux). Les 10 incidents récents sont des EXEMPLES.\nAGRÉGATS:\n${rows}\nINCIDENTS RÉCENTS (10 derniers):\n${recents}`);
-    }else{gaps.push(`Incidents terrain OCHA ${yr}`);parts.push(`=== INCIDENTS TERRAIN OCHA ===\nAucun incident terrain ${yr} au niveau national.`);}
+      // OCHA field incidents — national aggregate + recent examples
+      const oAgg=await sb(`v_ocha_incidents_summary?select=*&region=eq.NATIONAL&annee=eq.${yr}`);
+      const oRec=await sb(`ocha_field_incidents?select=incident_date,region,adm3_commune,location,incident_type,perpetrator,killed_civilians,wounded,displaced_persons,description&incident_date=gte.${yr}-01-01&incident_date=lte.${yr}-12-31&order=incident_date.desc&limit=10`);
+      console.log('[diag] ocha incidents NATIONAL view rows:', oAgg.length, '| recents:', oRec.length);
+      if(oAgg.length){
+        const rows=oAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.annee}: ${fmtNum(r.incidents)} incidents — ${fmtNum(r.civils_tues)} civils tués · ${fmtNum(r.blesses)} blessés · ${fmtNum(r.deplaces_rapportes)} déplacés rapportés — attaques armées ${fmtNum(r.attaques_armees)} · EEI ${fmtNum(r.eei)} · enlèvements ${fmtNum(r.enlevements)} · déplacements ${fmtNum(r.deplacements)} · pillages ${fmtNum(r.pillages)} · autres ${fmtNum(r.autres)} · période ${r.premier_incident}→${r.dernier_incident}`).join('\n');
+        const recents=oRec.map(r=>`  ${r.incident_date} [${r.region}|${r.adm3_commune||'?'}/${r.location||'?'}] ${r.incident_type} — ${r.perpetrator||'auteur inconnu'} — ${fmtNum(r.killed_civilians||0)} civils tués, ${fmtNum(r.wounded||0)} blessés${r.displaced_persons?', '+fmtNum(r.displaced_persons)+' déplacés':''} — ${(r.description||'').substring(0,220)}`).join('\n');
+        parts.push(`=== INCIDENTS TERRAIN OCHA ${yr} — NATIONAL [précalculé] (source: rapports hebdomadaires OCHA) ===\n${yrs.length>1?`RÈGLE 0: question multi-années — présenter chaque année séparément et, si la question compare, indiquer l'écart en valeur et en pourcentage. Ne jamais additionner les années.\n`:''}RÈGLE: totaux PRÉCALCULÉS — citer tels quels, ne jamais recompter. Source terrain complémentaire d'ACLED (méthodologies différentes, ne pas fusionner les totaux). Les 10 incidents récents sont des EXEMPLES.\nAGRÉGATS:\n${rows}\nINCIDENTS RÉCENTS (10 derniers):\n${recents}`);
+      }else{gaps.push(`Incidents terrain OCHA ${yr}`);parts.push(`=== INCIDENTS TERRAIN OCHA ===\nAucun incident terrain ${yr} au niveau national.`);}
 
-    // ACLED — national aggregate + recent examples
-    const aAgg=await sb(`v_acled_summary?select=*&niveau=eq.national&year=eq.${yr}`);
-    const aRec=await sb(`acled_incidents?select=event_date,adm1_name,adm2_name,location,event_type,sub_event_type,actor1,fatalities,civilian_targeting&year=eq.${yr}&order=event_date.desc&limit=10`);
-    console.log('[diag] acled NATIONAL view rows:', aAgg.length, '| recents:', aRec.length);
-    if(aAgg.length){
-      const rows=aAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.year}: ${fmtNum(r.evenements)} événements, ${fmtNum(r.morts)} morts — batailles ${fmtNum(r.batailles)} (${fmtNum(r.morts_batailles)} morts) · violence/civils ${fmtNum(r.violence_civils)} (${fmtNum(r.morts_violence_civils)} morts) · explosions/EEI/drones ${fmtNum(r.explosions)} (${fmtNum(r.morts_explosions)} morts) · ciblage civils ${fmtNum(r.ciblage_civils)} évts (${fmtNum(r.morts_ciblage_civils)} morts) · période ${r.premier_evenement}→${r.dernier_evenement}`).join('\n');
-      const recents=aRec.map(r=>`  ${r.event_date} [${r.adm1_name}|${r.adm2_name}/${r.location}] ${r.sub_event_type||r.event_type} — ${r.actor1||'?'} — ${fmtNum(r.fatalities||0)} morts${r.civilian_targeting?' (ciblage civils)':''}`).join('\n');
-      parts.push(`=== INCIDENTS ACLED ${yr} — NATIONAL [précalculé] (source: ACLED) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les 10 événements récents sont des EXEMPLES, pas l'exhaustivité: les totaux font foi.\nAGRÉGATS:\n${rows}\nÉVÉNEMENTS RÉCENTS (10 derniers):\n${recents}`);
-    }else{gaps.push(`Incidents ACLED ${yr}`);parts.push(`=== INCIDENTS ACLED ===\nAucune donnée ACLED ${yr} au niveau national.`);}
+      // ACLED — national aggregate + recent examples
+      const aAgg=await sb(`v_acled_summary?select=*&niveau=eq.national&year=eq.${yr}`);
+      const aRec=await sb(`acled_incidents?select=event_date,adm1_name,adm2_name,location,event_type,sub_event_type,actor1,fatalities,civilian_targeting&year=eq.${yr}&order=event_date.desc&limit=10`);
+      console.log('[diag] acled NATIONAL view rows:', aAgg.length, '| recents:', aRec.length);
+      if(aAgg.length){
+        const rows=aAgg.map(r=>`  [NATIONAL (TOTAL)] ${r.year}: ${fmtNum(r.evenements)} événements, ${fmtNum(r.morts)} morts — batailles ${fmtNum(r.batailles)} (${fmtNum(r.morts_batailles)} morts) · violence/civils ${fmtNum(r.violence_civils)} (${fmtNum(r.morts_violence_civils)} morts) · explosions/EEI/drones ${fmtNum(r.explosions)} (${fmtNum(r.morts_explosions)} morts) · ciblage civils ${fmtNum(r.ciblage_civils)} évts (${fmtNum(r.morts_ciblage_civils)} morts) · période ${r.premier_evenement}→${r.dernier_evenement}`).join('\n');
+        const recents=aRec.map(r=>`  ${r.event_date} [${r.adm1_name}|${r.adm2_name}/${r.location}] ${r.sub_event_type||r.event_type} — ${r.actor1||'?'} — ${fmtNum(r.fatalities||0)} morts${r.civilian_targeting?' (ciblage civils)':''}`).join('\n');
+        parts.push(`=== INCIDENTS ACLED ${yr} — NATIONAL [précalculé] (source: ACLED) ===\n${yrs.length>1?`RÈGLE 0: question multi-années — présenter chaque année séparément et, si la question compare, indiquer l'écart en valeur et en pourcentage. Ne jamais additionner les années.\n`:''}RÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les 10 événements récents sont des EXEMPLES, pas l'exhaustivité: les totaux font foi.\nAGRÉGATS:\n${rows}\nÉVÉNEMENTS RÉCENTS (10 derniers):\n${recents}`);
+      }else{gaps.push(`Incidents ACLED ${yr}`);parts.push(`=== INCIDENTS ACLED ===\nAucune donnée ACLED ${yr} au niveau national.`);}
+    }
   }
   // THÈMES INCIDENTS (vues précalculées) — toutes portées
   const THEME_RULES = [
@@ -1251,26 +1256,28 @@ async function buildContext(question){
   const themes = THEME_RULES.filter(([,rx])=>rx.test(question));
   const wantsList = /\b(chaque|liste[rz]?|tous\s+les|toutes\s+les|d[ée]tail|d[ée]taill)/i.test(question);
   if(themes.length && (isAll||hasTable('ocha_field_incidents')||hasTable('acled_incidents'))){
-    const yr = route.year && route.year!=='null' ? route.year : '2026';
+    const yrs = (route.years && route.years.length ? route.years : [route.year && route.year!=='null' ? route.year : '2026']);
     const regs = route.regions && route.regions.length ? route.regions : null;
     const regIn = regs ? `&region=in.(${regs.map(encodeURIComponent).join(',')})` : '';
     const n0=v=>(v==null?'?':fmtNum(v)||'0');
     for(const [key,,label] of themes){
-      // Agrégats : annuel national, annuel par région, mensuel national
-      const nat=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.national&mois=is.null&order=source.asc`);
-      const reg=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.region&mois=is.null${regIn}&order=source.asc,incidents.desc`);
-      const mon=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.national&mois=not.is.null&order=source.asc,mois.asc`);
-      // Lignes détaillées (exhaustif) — flag booléen = nom du thème
-      const lim = wantsList ? 300 : 40;
-      const det=await sb(`v_incident_themes?select=source,incident_date,region,province,commune,location,type_source,acteur,killed_civilians,killed_military,wounded,morts_total,displaced_persons,texte&${key}=is.true&annee=eq.${yr}${regIn}&order=region.asc,incident_date.desc&limit=${lim}`);
-      console.log(`[diag] theme ${key}: nat ${nat.length} | reg ${reg.length} | mon ${mon.length} | det ${det.length}`);
-      if(!nat.length && !reg.length){ gaps.push(`Thème ${label} ${yr}`); parts.push(`=== THÈME ${label.toUpperCase()} ${yr} ===\nAucun incident tagué ${label} en ${yr}${regs?' pour '+regs.join(', '):''}.`); continue; }
-      const fmtAgg=r=>`${n0(r.incidents)} incidents · ${r.civils_tues!=null?n0(r.civils_tues)+' civils tués · ':''}${n0(r.morts_total)} morts total${r.blesses!=null?' · '+n0(r.blesses)+' blessés':''}${r.deplaces?' · '+n0(r.deplaces)+' déplacés':''}`;
-      const natRows=nat.map(r=>`  [${r.source}] NATIONAL ${yr}: ${fmtAgg(r)}`).join('\n');
-      const regRows=reg.map(r=>`  [${r.source}] ${r.region}: ${fmtAgg(r)}`).join('\n');
-      const monRows=mon.map(r=>`  [${r.source}] ${yr}-${String(r.mois).padStart(2,'0')}: ${n0(r.incidents)} incidents, ${n0(r.morts_total)} morts`).join('\n');
-      const detRows=det.map(r=>`  [${r.source}] ${r.incident_date} [${r.region}|${r.province||'?'}/${r.commune||'?'}/${r.location||'?'}] ${r.type_source} — ${r.acteur||'auteur inconnu'} — ${r.source==='OCHA'?n0(r.killed_civilians)+' civils tués · '+n0(r.killed_military)+' militaires tués · '+n0(r.wounded)+' blessés':n0(r.morts_total)+' morts (civils/militaires non distingués)'}${r.displaced_persons?' · '+n0(r.displaced_persons)+' déplacés':''} — ${(r.texte||'').substring(0,260)}`).join('\n');
-      parts.push(`=== THÈME ${label.toUpperCase()} ${yr} [précalculé] (sources: OCHA terrain + ACLED, vues v_incident_themes*) ===\nRÈGLE 1: agrégats PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les en-têtes par région DOIVENT reprendre les chiffres de PAR RÉGION ci-dessous (par source), jamais un comptage des lignes.\nRÈGLE 2: chaque ligne d'incident porte sa source [OCHA] ou [ACLED] — la colonne Source est OBLIGATOIRE dans tout tableau. Présenter OCHA et ACLED séparément ou avec la colonne Source, ne JAMAIS additionner les deux sources (méthodologies différentes).${key==='humanitaires'?' ACLED ne code pas les attaques contre les humanitaires — OCHA est la seule source pour ce thème, ce n\'est pas une lacune.':''} Un même événement peut apparaître dans les deux sources avec des dates/orthographes légèrement différentes : ne pas les fusionner, ne pas les compter deux fois, laisser la colonne Source l'expliquer.\nRÈGLE 3: un incident peut porter plusieurs thèmes (ex. EEI largué par drone) — il apparaît alors dans chaque liste thématique, c'est normal.\nRÈGLE 4: 0 signifie zéro (aucune victime rapportée) ; "?" signifie non renseigné. Ne jamais remplacer 0 par un tiret.\n${det.length>=lim?`ATTENTION: liste tronquée à ${lim} incidents — les agrégats font foi.`:`La liste ci-dessous est EXHAUSTIVE (${det.length} incidents)${wantsList?' — la question demande le détail : lister CHAQUE incident, groupés par région, avec date, localité, auteur et bilan':''}.`}\nAGRÉGATS NATIONAUX:\n${natRows}\nPAR RÉGION:\n${regRows||'  —'}\nPAR MOIS (national):\n${monRows||'  —'}\nINCIDENTS:\n${detRows}`);
+      for(const yr of yrs){
+        // Agrégats : annuel national, annuel par région, mensuel national
+        const nat=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.national&mois=is.null&order=source.asc`);
+        const reg=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.region&mois=is.null${regIn}&order=source.asc,incidents.desc`);
+        const mon=await sb(`v_incident_themes_summary?select=*&theme=eq.${key}&annee=eq.${yr}&niveau=eq.national&mois=not.is.null&order=source.asc,mois.asc`);
+        // Lignes détaillées (exhaustif) — flag booléen = nom du thème
+        const lim = wantsList ? 300 : 40;
+        const det=await sb(`v_incident_themes?select=source,incident_date,region,province,commune,location,type_source,acteur,killed_civilians,killed_military,wounded,morts_total,displaced_persons,texte&${key}=is.true&annee=eq.${yr}${regIn}&order=region.asc,incident_date.desc&limit=${lim}`);
+        console.log(`[diag] theme ${key}: nat ${nat.length} | reg ${reg.length} | mon ${mon.length} | det ${det.length}`);
+        if(!nat.length && !reg.length){ gaps.push(`Thème ${label} ${yr}`); parts.push(`=== THÈME ${label.toUpperCase()} ${yr} ===\nAucun incident tagué ${label} en ${yr}${regs?' pour '+regs.join(', '):''}.`); continue; }
+        const fmtAgg=r=>`${n0(r.incidents)} incidents · ${r.civils_tues!=null?n0(r.civils_tues)+' civils tués · ':''}${n0(r.morts_total)} morts total${r.blesses!=null?' · '+n0(r.blesses)+' blessés':''}${r.deplaces?' · '+n0(r.deplaces)+' déplacés':''}`;
+        const natRows=nat.map(r=>`  [${r.source}] NATIONAL ${yr}: ${fmtAgg(r)}`).join('\n');
+        const regRows=reg.map(r=>`  [${r.source}] ${r.region}: ${fmtAgg(r)}`).join('\n');
+        const monRows=mon.map(r=>`  [${r.source}] ${yr}-${String(r.mois).padStart(2,'0')}: ${n0(r.incidents)} incidents, ${n0(r.morts_total)} morts`).join('\n');
+        const detRows=det.map(r=>`  [${r.source}] ${r.incident_date} [${r.region}|${r.province||'?'}/${r.commune||'?'}/${r.location||'?'}] ${r.type_source} — ${r.acteur||'auteur inconnu'} — ${r.source==='OCHA'?n0(r.killed_civilians)+' civils tués · '+n0(r.killed_military)+' militaires tués · '+n0(r.wounded)+' blessés':n0(r.morts_total)+' morts (civils/militaires non distingués)'}${r.displaced_persons?' · '+n0(r.displaced_persons)+' déplacés':''} — ${(r.texte||'').substring(0,260)}`).join('\n');
+        parts.push(`=== THÈME ${label.toUpperCase()} ${yr} [précalculé] (sources: OCHA terrain + ACLED, vues v_incident_themes*) ===\n${yrs.length>1?`RÈGLE 0: question multi-années — présenter chaque année séparément et, si la question compare, indiquer l'écart en valeur et en pourcentage. Ne jamais additionner les années.\n`:''}RÈGLE 1: agrégats PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les en-têtes par région DOIVENT reprendre les chiffres de PAR RÉGION ci-dessous (par source), jamais un comptage des lignes.\nRÈGLE 2: chaque ligne d'incident porte sa source [OCHA] ou [ACLED] — la colonne Source est OBLIGATOIRE dans tout tableau. Présenter OCHA et ACLED séparément ou avec la colonne Source, ne JAMAIS additionner les deux sources (méthodologies différentes).${key==='humanitaires'?' ACLED ne code pas les attaques contre les humanitaires — OCHA est la seule source pour ce thème, ce n\'est pas une lacune.':''} Un même événement peut apparaître dans les deux sources avec des dates/orthographes légèrement différentes : ne pas les fusionner, ne pas les compter deux fois, laisser la colonne Source l'expliquer.\nRÈGLE 3: un incident peut porter plusieurs thèmes (ex. EEI largué par drone) — il apparaît alors dans chaque liste thématique, c'est normal.\nRÈGLE 4: 0 signifie zéro (aucune victime rapportée) ; "?" signifie non renseigné. Ne jamais remplacer 0 par un tiret.\n${det.length>=lim?`ATTENTION: liste tronquée à ${lim} incidents — les agrégats font foi.`:`La liste ci-dessous est EXHAUSTIVE (${det.length} incidents)${wantsList?' — la question demande le détail : lister CHAQUE incident, groupés par région, avec date, localité, auteur et bilan':''}.`}\nAGRÉGATS NATIONAUX:\n${natRows}\nPAR RÉGION:\n${regRows||'  —'}\nPAR MOIS (national):\n${monRows||'  —'}\nINCIDENTS:\n${detRows}`);
+      }
     }
   }
   // PRÉSENCE 3W — national

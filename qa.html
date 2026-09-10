@@ -448,7 +448,8 @@ async function runSuite(subset){
 
     STATE[q.id] = {q, res, delta};
     await saveResult({run_id:run.id, question_id:q.id, answer:res.answer, expected:res.expected,
-                      verdict:res.verdict, reason:res.reason, latency_ms:res.latency_ms});
+                      verdict:res.verdict, reason:res.reason, latency_ms:res.latency_ms,
+                      context:res.context});
 
     done++;
     renderAll();
