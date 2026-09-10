@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFA HumanBase — Suite QA</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1923;--ink2:#243447;--ink3:#4A6070;--un-blue:#026CB6;--un-light:#66B0EC;--un-pale:#EAF4FC;--red:#D0312D;--red-pale:#FFF0F0;--green:#2E7D32;--green-pale:#F0FFF0;--amber:#E65100;--amber-pale:#FFF8F0;--purple:#5B21B6;--purple-pale:#F3EAFF;--teal:#00695C;--teal-pale:#E0F2F1;--white:#FFFFFF;--off:#F7F9FC;--border:#E2E8F0;--shadow:0 1px 3px rgba(15,25,35,.08),0 4px 16px rgba(15,25,35,.06);--shadow-lg:0 8px 32px rgba(15,25,35,.12);--r:8px;--rl:14px;--fh:'DM Sans',sans-serif;--fm:'DM Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fh);background:var(--off);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;font-size:15px}
+header{background:var(--ink);height:56px;display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.logo-mark{width:4px;height:30px;background:var(--un-blue);border-radius:2px;flex-shrink:0}
+.logo-text{font-size:1rem;font-weight:700;color:white}
+.logo-text span{font-weight:300;color:var(--un-light);margin-left:6px;font-size:.85rem}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.db-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:4px 12px;font-size:.75rem;color:#94A3B8}
+.db-dot{width:6px;height:6px;border-radius:50%;background:#94A3B8;transition:background .3s}
+.db-dot.ok{background:#4CAF50}.db-dot.err{background:var(--red)}.db-dot.spin{background:var(--amber);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+main{flex:1;padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;max-width:1240px;width:100%;margin:0 auto}
+.card{background:var(--white);border-radius:var(--rl);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-size:.72rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .ct-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--white);border-radius:var(--rl);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.k-pass::before{background:var(--green)}.kpi.k-fail::before{background:var(--red)}
+.kpi.k-err::before{background:var(--amber)}.kpi.k-time::before{background:var(--un-blue)}
+.kpi.k-new::before{background:var(--red)}.kpi.k-fix::before{background:var(--teal)}
+.kpi-val{font-family:var(--fm);font-size:1.8rem;font-weight:500;color:var(--ink);line-height:1}
+.kpi-lbl{font-size:.72rem;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+.kpi-sub{font-size:.7rem;color:var(--ink3);margin-top:3px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font-family:var(--fh);font-size:.8rem;font-weight:600;border-radius:var(--r);padding:9px 16px;cursor:pointer;border:1px solid var(--border);background:var(--white);color:var(--ink2);transition:all .15s}
+button:hover:not(:disabled){border-color:var(--un-blue);color:var(--un-blue)}
+button.primary{background:var(--un-blue);border-color:var(--un-blue);color:white}
+button.primary:hover:not(:disabled){background:#015a99}
+button:disabled{opacity:.45;cursor:not-allowed}
+select{font-family:var(--fh);font-size:.8rem;padding:9px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--white);color:var(--ink2);cursor:pointer}
+.progress-track{height:8px;background:var(--off);border-radius:4px;overflow:hidden;border:1px solid var(--border);margin-top:12px}
+.progress-fill{height:100%;background:var(--un-blue);width:0;transition:width .35s cubic-bezier(.4,0,.2,1)}
+.progress-lbl{font-size:.72rem;color:var(--ink3);margin-top:6px;font-family:var(--fm)}
+.q-card{background:var(--white);border-radius:var(--rl);border:1px solid var(--border);box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:9px}
+.q-card.newfail{border-color:var(--red);border-width:2px;background:var(--red-pale)}
+.q-card.fixed{border-color:var(--teal)}
+.q-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.q-code{font-family:var(--fm);font-size:.72rem;color:var(--ink3);font-weight:500}
+.q-fam{font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--un-pale);color:var(--un-blue);white-space:nowrap}
+.badge{font-size:.64rem;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.badge.pass{background:var(--green-pale);color:var(--green)}
+.badge.fail{background:var(--red-pale);color:var(--red)}
+.badge.error{background:var(--amber-pale);color:var(--amber)}
+.badge.pending{background:var(--off);color:var(--ink3)}
+.badge.delta-new{background:var(--red);color:white}
+.badge.delta-fixed{background:var(--teal);color:white}
+.q-text{font-size:.9rem;font-weight:600;color:var(--ink);line-height:1.35}
+.q-reason{font-size:.78rem;color:var(--ink2);background:var(--off);border-left:3px solid var(--border);padding:8px 11px;border-radius:0 var(--r) var(--r) 0;line-height:1.45}
+.q-card.newfail .q-reason,.q-card.fail .q-reason{border-left-color:var(--red)}
+.q-meta{font-family:var(--fm);font-size:.7rem;color:var(--ink3)}
+details{border-top:1px solid var(--border);padding-top:9px}
+summary{font-size:.74rem;font-weight:600;color:var(--un-blue);cursor:pointer;user-select:none;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'▸ ';font-size:.7rem}
+details[open] summary::before{content:'▾ '}
+pre{font-family:var(--fm);font-size:.7rem;line-height:1.5;background:var(--off);border:1px solid var(--border);border-radius:var(--r);padding:11px;overflow:auto;max-height:420px;white-space:pre-wrap;word-break:break-word;color:var(--ink2);margin-top:9px}
+.sec-lbl{font-size:.68rem;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-top:11px}
+.results{display:flex;flex-direction:column;gap:11px}
+.empty{font-size:.82rem;color:var(--ink3);text-align:center;padding:28px}
+.warn{background:var(--amber-pale);border:1px solid var(--amber);color:#7a3200;border-radius:var(--r);padding:10px 13px;font-size:.76rem;line-height:1.45}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark"></div>
+  <div class="logo-text">BFA HumanBase <span>Suite QA</span></div>
+  <div class="header-right">
+    <div class="db-pill"><div class="db-dot" id="appDot"></div><span id="appStatus">chargement de l'app…</span></div>
+  </div>
+</header>
+
+<iframe id="app" src="index.html" style="display:none"></iframe>
+
+<main>
+
+  <div class="card">
+    <div class="card-title"><div class="ct-dot" style="background:var(--un-blue)"></div>Exécution</div>
+    <div class="toolbar">
+      <button class="primary" id="btnRun" disabled>Lancer la suite</button>
+      <button id="btnRerun" disabled>Rejouer les échecs seulement</button>
+      <select id="famFilter"><option value="">Toutes les familles</option></select>
+      <span class="q-meta" id="commitLbl"></span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+    <div class="progress-lbl" id="progLbl">En attente du chargement de index.html…</div>
+  </div>
+
+  <div id="rxWarn"></div>
+
+  <div class="kpi-row" id="kpiRow" style="display:none">
+    <div class="kpi k-pass"><div class="kpi-val" id="kPass">—</div><div class="kpi-lbl">Réussis</div><div class="kpi-sub" id="kPassSub">&nbsp;</div></div>
+    <div class="kpi k-fail"><div class="kpi-val" id="kFail">—</div><div class="kpi-lbl">Échecs</div><div class="kpi-sub">verdict fail</div></div>
+    <div class="kpi k-err"><div class="kpi-val" id="kErr">—</div><div class="kpi-lbl">Erreurs</div><div class="kpi-sub">exception / check inconnu</div></div>
+    <div class="kpi k-new"><div class="kpi-val" id="kNew">—</div><div class="kpi-lbl">Nouveaux échecs</div><div class="kpi-sub">régressions</div></div>
+    <div class="kpi k-fix"><div class="kpi-val" id="kFix">—</div><div class="kpi-lbl">Corrigés</div><div class="kpi-sub">depuis le run précédent</div></div>
+    <div class="kpi k-time"><div class="kpi-val" id="kTime">—</div><div class="kpi-lbl">Durée</div><div class="kpi-sub" id="kTimeSub">&nbsp;</div></div>
+  </div>
+
+  <div class="results" id="results"><div class="empty">Aucun résultat. Lancez la suite pour commencer.</div></div>
+
+</main>
+
+<script>
+// ---------------------------------------------------------------------------
+// Constantes
+// ---------------------------------------------------------------------------
+const GIT_COMMIT = 'unknown';
+const MODEL = 'claude-haiku-4-5-20251001';
+const PAUSE_MS = 1000;          // pause entre deux questions (proxy rate-limité)
+
+let W = null;                   // window de l'iframe index.html
+let QUESTIONS = [];             // questions actives
+let PREV = {};                  // question_id -> verdict du dernier run terminé
+let STATE = {};                 // question_id -> {q, res, delta}
+let RUNNING = false;
+let RX_OVERESCAPED = [];        // codes dont les regex sont sur-échappées en base
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+// ---------------------------------------------------------------------------
+// Normalisation & extraction de nombres
+// ---------------------------------------------------------------------------
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[\u00a0\u202f]/g,' ');
+
+// Retire les séparateurs de milliers (espace, nbsp, nbsp étroite, virgule, point)
+// uniquement lorsqu'ils sont suivis d'exactement 3 chiffres, puis collecte les entiers.
+const numsIn = s => new Set((s.replace(/[\u00a0\u202f\s,.](?=\d{3}\b)/g,'').match(/\d+/g)||[]));
+
+// Les regex stockées en base sont sur-échappées (\\d au lieu de \d) : on replie
+// les doubles antislashs, ce qui est sans effet sur un motif correctement échappé.
+const BS = String.fromCharCode(92);
+function toRegExp(pattern, flags='i'){
+  const collapsed = pattern.split(BS+BS).join(BS);
+  return new RegExp(collapsed, flags);
+}
+
+// ---------------------------------------------------------------------------
+// Accès données
+// ---------------------------------------------------------------------------
+const api = (path, opts={}) => fetch(`${W.SB}/rest/v1/${path}`,
+  {...opts, headers:{...W.H, 'Content-Type':'application/json', ...(opts.headers||{})}});
+
+async function loadQuestions(){
+  const r = await api('qa_questions?select=*&active=is.true&order=id');
+  if(!r.ok) throw new Error('qa_questions: HTTP '+r.status);
+  return r.json();
+}
+
+async function loadExpected(qid){
+  const r = await api('rpc/qa_expected', {method:'POST', body:JSON.stringify({qid})});
+  if(!r.ok) throw new Error('qa_expected: HTTP '+r.status);
+  const j = await r.json();
+  return Array.isArray(j) ? j : (j==null ? [] : [j]);
+}
+
+async function loadPreviousRun(){
+  const r = await api('qa_runs?select=id&finished_at=not.is.null&order=id.desc&limit=1');
+  if(!r.ok) return {};
+  const runs = await r.json();
+  if(!runs.length) return {};
+  const rr = await api(`qa_results?select=question_id,verdict&run_id=eq.${runs[0].id}`);
+  if(!rr.ok) return {};
+  const rows = await rr.json();
+  const map = {};
+  rows.forEach(x => { map[x.question_id] = x.verdict; });
+  return map;
+}
+
+async function createRun(runBy){
+  const r = await api('qa_runs', {method:'POST', headers:{'Prefer':'return=representation'},
+    body: JSON.stringify({git_commit:GIT_COMMIT, model:MODEL, run_by:runBy, n_total:0, n_pass:0, n_fail:0, n_error:0})});
+  if(!r.ok) throw new Error('création du run: HTTP '+r.status+' '+(await r.text()).slice(0,160));
+  return (await r.json())[0];
+}
+
+async function saveResult(row){
+  const r = await api('qa_results', {method:'POST', body:JSON.stringify(row)});
+  if(!r.ok) console.error('qa_results POST échoué:', r.status, (await r.text()).slice(0,200));
+}
+
+async function finishRun(runId, counts){
+  const r = await api(`qa_runs?id=eq.${runId}`, {method:'PATCH',
+    body: JSON.stringify({finished_at:new Date().toISOString(), ...counts})});
+  if(!r.ok) console.error('qa_runs PATCH échoué:', r.status);
+}
+
+// ---------------------------------------------------------------------------
+// Notation
+// ---------------------------------------------------------------------------
+function gradeNumbers(answer, exp, p){
+  const nums = numsIn(answer), na = norm(answer), missing = [], problems = [];
+
+  exp.forEach(e => {
+    const v = e.value != null ? e.value : e.n;
+    if(v == null) return;
+    if(!nums.has(String(v))) missing.push(`${e.label||e.item||'valeur'}=${v}`);
+  });
+  if(missing.length) problems.push('valeurs absentes : ' + missing.join(', '));
+
+  const terms = p.require_terms || [];
+  const missingTerms = terms.filter(t => !na.includes(norm(t)));
+  if(missingTerms.length) problems.push('termes obligatoires absents : ' + missingTerms.join(', '));
+
+  if(p.require_regex && !toRegExp(p.require_regex).test(answer))
+    problems.push('require_regex non satisfaite : ' + p.require_regex);
+
+  if(p.forbid_regex && toRegExp(p.forbid_regex).test(answer))
+    problems.push('forbid_regex déclenchée (formulation interdite) : ' + p.forbid_regex);
+
+  if(p.forbid_sum){
+    const vals = exp.map(e => e.value != null ? e.value : e.n).filter(v => typeof v === 'number');
+    if(vals.length > 1){
+      const sum = vals.reduce((a,b)=>a+b, 0);
+      if(nums.has(String(sum)))
+        problems.push(`somme interdite présente : ${sum} (= ${vals.join(' + ')}) — les sources ne doivent pas être additionnées`);
+    }
+  }
+
+  return problems.length ? {verdict:'fail', reason:problems.join(' · ')}
+                         : {verdict:'pass', reason:`${exp.length} valeur(s) trouvée(s)${terms.length?', termes présents':''}`};
+}
+
+function gradeCoverage(answer, exp, p){
+  const na = norm(answer);
+  const found = [], missing = [];
+  exp.forEach(e => {
+    const item = e.item != null ? String(e.item) : null;
+    if(item == null) return;
+    (na.includes(norm(item)) ? found : missing).push(item);
+  });
+  const min = p.min_items != null ? p.min_items : exp.length;
+  if(found.length < min)
+    return {verdict:'fail', reason:`${found.length}/${exp.length} élément(s) cité(s), minimum ${min}. Absents : ${missing.join(', ')||'—'}`};
+  return {verdict:'pass', reason:`${found.length}/${exp.length} élément(s) cité(s) (minimum ${min})`};
+}
+
+function gradeRowCount(answer, exp, p){
+  if(!p.row_regex) return {verdict:'error', reason:'row_regex manquante dans check_params'};
+  const expected = exp.length ? (exp[0].n != null ? exp[0].n : exp[0].value) : null;
+  if(expected == null) return {verdict:'error', reason:'valeur attendue absente de qa_expected'};
+  const found = (answer.match(toRegExp(p.row_regex, 'gi')) || []).length;
+  const tol = p.tolerance_pct != null ? p.tolerance_pct : 0;
+  const allowed = expected * tol / 100;
+  const ok = Math.abs(found - expected) <= allowed;
+  const reason = `${found} ligne(s) trouvée(s) pour ${expected} attendue(s) (tolérance ${tol}% = ±${allowed.toFixed(1)})`;
+  return {verdict: ok ? 'pass' : 'fail', reason};
+}
+
+function gradeCorrectGap(answer, exp, p){
+  const problems = [];
+  if(p.require_regex && !toRegExp(p.require_regex).test(answer))
+    problems.push('la réponse ne reconnaît pas la lacune (require_regex non satisfaite) : ' + p.require_regex);
+  if(p.forbid_regex && toRegExp(p.forbid_regex).test(answer))
+    problems.push('la réponse invente des chiffres (forbid_regex déclenchée) : ' + p.forbid_regex);
+  return problems.length ? {verdict:'fail', reason:problems.join(' · ')}
+                         : {verdict:'pass', reason:'lacune correctement signalée, aucun chiffre inventé'};
+}
+
+function grade(q, answer, exp){
+  const p = q.check_params || {};
+  switch(q.check_type){
+    case 'numbers':           return gradeNumbers(answer, exp, p);
+    case 'coverage':          return gradeCoverage(answer, exp, p);
+    case 'row_count':         return gradeRowCount(answer, exp, p);
+    case 'correct_gap':       return gradeCorrectGap(answer, exp, p);
+    case 'source_discipline': return gradeNumbers(answer, exp,
+                                     {...p, require_terms: p.require_terms || ['OCHA','ACLED'], forbid_sum: true});
+    default:                  return {verdict:'error', reason:'check_type inconnu'};
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rendu
+// ---------------------------------------------------------------------------
+function cardHtml(entry){
+  const {q, res, delta} = entry;
+  const v = res ? res.verdict : 'pending';
+  const badges = {pass:'Réussi', fail:'Échec', error:'Erreur', pending:'En attente'};
+  const cls = delta === 'new' ? ' newfail' : (delta === 'fixed' ? ' fixed' : (v === 'fail' ? ' fail' : ''));
+  const deltaBadge = delta === 'new'   ? '<span class="badge delta-new">Nouvel échec</span>'
+                   : delta === 'fixed' ? '<span class="badge delta-fixed">Corrigé</span>' : '';
+  return `<div class="q-card${cls}" data-family="${esc(q.family)}" data-id="${q.id}">
+    <div class="q-top">
+      <span class="q-code">${esc(q.code)}</span>
+      <span class="q-fam">${esc(q.family)}</span>
+      <span class="badge ${v}">${badges[v]}</span>
+      ${deltaBadge}
+      ${res && res.latency_ms != null ? `<span class="q-meta" style="margin-left:auto">${res.latency_ms} ms</span>` : ''}
+    </div>
+    <div class="q-text">${esc(q.question)}</div>
+    ${res ? `<div class="q-reason">${esc(res.reason)}</div>` : ''}
+    ${res ? `<details><summary>Réponse, contexte et valeurs attendues</summary>
+      <div class="sec-lbl">Valeurs attendues (qa_expected)</div>
+      <pre>${esc(JSON.stringify(res.expected, null, 2))}</pre>
+      <div class="sec-lbl">Paramètres du contrôle (${esc(q.check_type)})</div>
+      <pre>${esc(JSON.stringify(q.check_params, null, 2))}</pre>
+      <div class="sec-lbl">Réponse complète</div>
+      <pre>${esc(res.answer || '—')}</pre>
+      <div class="sec-lbl">Contexte envoyé au modèle</div>
+      <pre>${esc(res.context || '—')}</pre>
+    </details>` : ''}
+  </div>`;
+}
+
+function renderAll(){
+  const filter = $('famFilter').value;
+  const entries = Object.values(STATE).filter(e => !filter || e.q.family === filter);
+  const rank = e => e.delta === 'new' ? 0
+                  : (e.res && e.res.verdict === 'fail') ? 1
+                  : (e.res && e.res.verdict === 'error') ? 2
+                  : e.delta === 'fixed' ? 3 : 4;
+  entries.sort((a,b) => rank(a) - rank(b) || a.q.id - b.q.id);
+  $('results').innerHTML = entries.length
+    ? entries.map(cardHtml).join('')
+    : '<div class="empty">Aucun résultat pour ce filtre.</div>';
+}
+
+function updateKpis(startedAt){
+  const all = Object.values(STATE).filter(e => e.res);
+  const n = v => all.filter(e => e.res.verdict === v).length;
+  $('kPass').textContent = n('pass');
+  $('kPassSub').textContent = `sur ${all.length} exécutée(s)`;
+  $('kFail').textContent = n('fail');
+  $('kErr').textContent  = n('error');
+  $('kNew').textContent  = all.filter(e => e.delta === 'new').length;
+  $('kFix').textContent  = all.filter(e => e.delta === 'fixed').length;
+  const secs = Math.round((performance.now() - startedAt) / 1000);
+  $('kTime').textContent = secs < 60 ? secs + ' s' : Math.floor(secs/60) + ' min ' + (secs%60) + ' s';
+  $('kTimeSub').textContent = all.length ? Math.round(all.reduce((a,e)=>a+(e.res.latency_ms||0),0)/all.length) + ' ms / question' : '\u00a0';
+  $('kpiRow').style.display = '';
+}
+
+function setProgress(done, total, label){
+  $('progFill').style.width = total ? (done/total*100) + '%' : '0';
+  $('progLbl').textContent = label;
+}
+
+// ---------------------------------------------------------------------------
+// Exécution de la suite
+// ---------------------------------------------------------------------------
+async function runSuite(subset){
+  if(RUNNING) return;
+  RUNNING = true;
+  $('btnRun').disabled = true; $('btnRerun').disabled = true;
+
+  const list = subset && subset.length ? subset : QUESTIONS;
+  const runBy = (window.prompt('Nom de la personne qui lance la suite ?', 'assefa') || 'assefa').trim();
+  const startedAt = performance.now();
+
+  let run;
+  try { run = await createRun(runBy); }
+  catch(e){ setProgress(0,0,'Impossible de créer le run : ' + e.message); RUNNING = false; $('btnRun').disabled = false; return; }
+
+  $('commitLbl').textContent = `run #${run.id} · commit ${GIT_COMMIT} · ${MODEL}`;
+  PREV = await loadPreviousRun();
+
+  // remet à zéro les entrées à (re)jouer
+  list.forEach(q => { STATE[q.id] = {q, res:null, delta:null}; });
+  renderAll();
+
+  let done = 0;
+  const counts = {n_total:list.length, n_pass:0, n_fail:0, n_error:0};
+
+  for(const q of list){
+    setProgress(done, list.length, `Question ${done+1}/${list.length} — ${q.code}…`);
+    let res;
+    try {
+      const exp = await loadExpected(q.id);
+      const out = await W.qaAnswer(q.question, q.mode);
+      const g   = grade(q, out.answer, exp);
+      res = {verdict:g.verdict, reason:g.reason, answer:out.answer, context:out.context,
+             latency_ms:out.latency_ms, expected:exp};
+    } catch(e){
+      res = {verdict:'error', reason:'Exception : ' + (e && e.message ? e.message : String(e)),
+             answer:'', context:'', latency_ms:null, expected:[]};
+    }
+
+    counts['n_' + (res.verdict === 'pass' ? 'pass' : res.verdict === 'fail' ? 'fail' : 'error')]++;
+
+    const before = PREV[q.id];
+    const delta = before === 'pass' && res.verdict !== 'pass' ? 'new'
+                : before && before !== 'pass' && res.verdict === 'pass' ? 'fixed' : null;
+
+    STATE[q.id] = {q, res, delta};
+    await saveResult({run_id:run.id, question_id:q.id, answer:res.answer, expected:res.expected,
+                      verdict:res.verdict, reason:res.reason, latency_ms:res.latency_ms});
+
+    done++;
+    renderAll();
+    updateKpis(startedAt);
+    if(done < list.length) await new Promise(r => setTimeout(r, PAUSE_MS));
+  }
+
+  await finishRun(run.id, counts);
+  setProgress(done, list.length,
+    `Terminé — ${counts.n_pass} réussis, ${counts.n_fail} échecs, ${counts.n_error} erreurs (run #${run.id}).`);
+  RUNNING = false;
+  $('btnRun').disabled = false;
+  $('btnRerun').disabled = false;
+}
+
+// ---------------------------------------------------------------------------
+// Démarrage
+// ---------------------------------------------------------------------------
+$('famFilter').addEventListener('change', renderAll);
+$('btnRun').addEventListener('click', () => runSuite(null));
+$('btnRerun').addEventListener('click', () => {
+  const failed = Object.values(STATE).filter(e => e.res && e.res.verdict !== 'pass').map(e => e.q);
+  if(!failed.length){ setProgress(0,0,'Aucun échec à rejouer.'); return; }
+  runSuite(failed);
+});
+
+$('app').addEventListener('load', async () => {
+  try {
+    W = $('app').contentWindow;
+    $('appDot').className = 'db-dot spin';
+    $('appStatus').textContent = 'initialisation…';
+    await W.qaReady;
+
+    QUESTIONS = await loadQuestions();
+    QUESTIONS.forEach(q => { STATE[q.id] = {q, res:null, delta:null}; });
+
+    const fams = [...new Set(QUESTIONS.map(q => q.family))].sort();
+    fams.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; $('famFilter').appendChild(o); });
+
+    // Signale les regex sur-échappées en base (\\d au lieu de \d) : elles sont
+    // repliées à l'exécution, mais la donnée reste à corriger.
+    RX_OVERESCAPED = QUESTIONS.filter(q => {
+      const p = q.check_params || {};
+      return [p.row_regex, p.require_regex, p.forbid_regex].some(x => x && x.includes(BS+BS));
+    }).map(q => q.code);
+    if(RX_OVERESCAPED.length){
+      $('rxWarn').innerHTML = `<div class="warn"><strong>Regex sur-échappées en base</strong> — ${RX_OVERESCAPED.length} question(s) stockent <code>${BS}${BS}d</code> au lieu de <code>${BS}d</code> : ${RX_OVERESCAPED.join(', ')}. Le runner replie les doubles antislashs pour que le contrôle fonctionne ; la valeur en base reste à corriger.</div>`;
+    }
+
+    PREV = await loadPreviousRun();
+    renderAll();
+
+    $('appDot').className = 'db-dot ok';
+    $('appStatus').textContent = `${QUESTIONS.length} questions prêtes`;
+    $('commitLbl').textContent = `commit ${GIT_COMMIT} · ${MODEL}`;
+    setProgress(0, QUESTIONS.length, `${QUESTIONS.length} questions actives, ${fams.length} familles. Prêt.`);
+    $('btnRun').disabled = false;
+  } catch(e){
+    $('appDot').className = 'db-dot err';
+    $('appStatus').textContent = 'échec du chargement';
+    setProgress(0, 0, 'Erreur au démarrage : ' + (e && e.message ? e.message : String(e)));
+  }
+});
+</script>
+</body>
+</html>
