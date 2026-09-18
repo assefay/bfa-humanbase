@@ -774,6 +774,10 @@ function enforceSourcingRules(routerOutput, query) {
   if (/personnes dans le besoin|dans le besoin|population dans le besoin|besoins par province|ampleur|cibles?|\bpin\b/.test(q)) {
     add('hpc_pin', 'rule4-pin');
   }
+  // Règle 5 : financement — le vocabulaire financier est distinctif, on force la table
+  if (/financement|financé|financee|bailleur|donateur|fonds|budget|couverture financière|couverture financiere|déficit|deficit|\bgap\b|besoins financiers|us\$|usd|millions? de dollars|hnrp financé|plan financé/.test(q)) {
+    add('fts_financement', 'rule5-financement');
+  }
   out.tables = Array.from(tables);
   out._enforced = enforced;
   return out;
@@ -817,7 +821,8 @@ hpc_severity: Sévérité JIAF HPC 2026 par province (admin2): score 1–5 par c
 hpc_pin: PIN (personnes dans le besoin), cibles et population de base HPC 2026 par province × cluster × groupe de population (non-déplacés, PDI, retournés, réfugiés). Pour questions sur personnes dans le besoin, cibles, couverture, ampleur des besoins.
 hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.
 cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.
-partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).`;
+partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).
+fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financiers, montants financés, taux de couverture et déficit, par année (2024, 2025, 2026) et par cluster; principaux bailleurs et principales organisations récipiendaires. Pour toute question sur le financement, les fonds reçus, les bailleurs ou donateurs, la couverture financière, le gap ou déficit de financement, le coût du plan, le HNRP financé. Portée nationale uniquement: FTS ne publie pas de ventilation par région, province ou commune — choisir quand même cette table lorsque la question cite un lieu, et recopier ce lieu dans regions.`;
 
   try {
     const resp = await fetch(PROXY, {
@@ -832,7 +837,28 @@ partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIE
     const data = await resp.json();
     const text = (data.content?.[0]?.text || '').trim().replace(/```json|```/g, '').trim();
     console.log('Router raw response:', text);
-    const parsed = JSON.parse(text);
+    // Le routeur ajoute parfois un commentaire en prose APRÈS le JSON (ex. une mise
+    // en garde sur une table) — JSON.parse échouait alors et toute la requête
+    // tombait dans le fallback. On n'analyse que le premier objet {...} équilibré.
+    const jsonText = (() => {
+      const start = text.indexOf('{');
+      if (start < 0) return text;
+      let depth = 0, inStr = false, esc = false;
+      for (let i = start; i < text.length; i++) {
+        const c = text[i];
+        if (esc) { esc = false; continue; }
+        if (c.charCodeAt(0) === 92) { esc = true; continue; }  // antislash
+        if (c === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (c === '{') depth++;
+        else if (c === '}' && --depth === 0) return text.slice(start, i + 1);
+      }
+      return text;
+    })();
+    if (jsonText !== text) {
+      console.warn('[router] JSON extrait du texte brut — le modèle a ajouté du texte autour du JSON. Réponse brute:', text);
+    }
+    const parsed = JSON.parse(jsonText);
     console.log('Router parsed:', parsed);
     const rawRegions = Array.isArray(parsed.regions) ? parsed.regions : [];
     const unrecognizedRegions = [];
@@ -1302,6 +1328,40 @@ async function buildContext(question){
           :`    ${r.bimestre||'toutes périodes'} · ${r.cluster_code}: ${fmtNum(r.orgs)} org. · ${fmtNum(r.activites)} activités`;
       }).join('\n');
       parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — NATIONAL [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE. Périodes présentes dans ces données: ${[...new Set(w3.map(r=>r.bimestre).filter(Boolean))].join(', ')}. La présence s'exprime par période de deux mois, JAMAIS par mois individuel: une question portant sur un mois isolé se répond par le bimestre qui le contient, en nommant explicitement la période (ex. « en mai » → période mai-juin). Comptage = organisations principales + partenaires de mise en œuvre (partenaire_moe), union dédupliquée et PRÉCALCULÉE — citer tel quel, ne jamais recalculer. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
+    }
+  }
+  // FINANCEMENT FTS — national (aucune ventilation régionale possible)
+  if(isAll||hasTable('fts_financement')){
+    const nat=await sb(`v_fts_couverture_nationale?select=*&order=annee.desc`);
+    if(nat.length){
+      const fy=(year && nat.some(r=>String(r.annee)===String(year))) ? Number(year) : Math.max(...nat.map(r=>r.annee));
+      const [clu,bail,reci]=await Promise.all([
+        sb(`v_fts_couverture?select=*&annee=eq.${fy}&order=couverture_pct.asc`),
+        sb(`v_fts_bailleurs?select=*&annee=eq.${fy}&order=montant_usd.desc&limit=15`),
+        sb(`v_fts_recipiendaires?select=*&annee=eq.${fy}&order=montant_usd.desc&limit=15`)
+      ]);
+      const musd=v=>v==null?'?':(Number(v)/1e6).toFixed(1).replace('.',',')+' M US$';
+      const pct =v=>v==null?'?':String(v).replace('.',',')+' %';
+      const annuel=nat.map(r=>`  ${r.annee}: besoins ${musd(r.besoins_usd)} · financé ${musd(r.financement_usd)} · couverture ${pct(r.couverture_pct)} · déficit ${musd(r.deficit_usd)}`).join('\n');
+      const parCluster=clu.map(r=>`  ${r.cluster}: besoins ${musd(r.besoins_usd)} · financé ${musd(r.financement_usd)} · couverture ${pct(r.couverture_pct)} · déficit ${musd(r.deficit_usd)}`).join('\n');
+      const parBailleur=bail.map(r=>`  ${r.bailleur}: ${musd(r.montant_usd)} (${pct(r.part_pct)} du financement)`).join('\n');
+      const parReci=reci.map(r=>`  ${r.organisation}${r.type_organisation?' ['+r.type_organisation+']':''}: ${musd(r.montant_usd)} (${pct(r.part_pct)})`).join('\n');
+      const maj=nat.find(r=>r.annee===fy);
+      parts.push(`=== FINANCEMENT HUMANITAIRE FTS — NATIONAL [précalculé] (source: OCHA Financial Tracking Service, données au ${maj&&maj.date_maj?maj.date_maj:'?'}) ===
+RÈGLE 1: tous les montants ci-dessous sont PRÉCALCULÉS — les citer tels quels, ne JAMAIS les recalculer, les additionner entre eux ni les convertir.
+RÈGLE 2: le financement d'un plan ne se ventile PAS par région, province ou commune — FTS ne collecte pas cette information. Si la question porte sur le financement d'une région, répondre explicitement que FTS ne publie pas de ventilation géographique, puis donner le niveau national.
+RÈGLE 3: la somme des financements par cluster est INFÉRIEURE au total du plan: une partie des fonds n'est rattachée à aucun cluster ou est partagée entre plusieurs (${musd(maj&&maj.non_rapporte_usd)} non rattachés et ${musd(maj&&maj.multi_clusters_usd)} partagés en ${fy}). Ne jamais présenter la somme des clusters comme le total du plan.
+RÈGLE 4: les pledges (annonces non engagées) ne sont PAS comptés dans le financement.
+COUVERTURE PAR ANNÉE:
+${annuel}
+COUVERTURE PAR CLUSTER (${fy}), du moins financé au mieux financé:
+${parCluster||'  —'}
+PRINCIPAUX BAILLEURS (${fy}):
+${parBailleur||'  —'}
+PRINCIPALES ORGANISATIONS RÉCIPIENDAIRES (${fy}):
+${parReci||'  —'}`);
+    } else {
+      gaps.push('financement FTS');
     }
   }
   if(gaps.length){parts.push(`=== DONNÉES MANQUANTES (PARTIEL) ===\nLes sources suivantes n'ont PAS de données pour cette portée: ${gaps.join(', ')}${route.regions && route.regions.length ? ' (pour '+route.regions.join(', ')+')' : ''}${year?' en '+year:''}.\nIMPORTANT: Ceci concerne UNIQUEMENT ces sources précises. NE PAS refuser de répondre. Rédige une réponse complète à partir de TOUTES les autres sources présentes ci-dessus (rapports hebdomadaires, incidents, zones d'accès, etc.). Mentionne brièvement l'absence de ces sources spécifiques seulement si elle est pertinente pour la question. Ne jamais transformer l'absence d'une source en absence totale de données.`);}
