@@ -942,7 +942,13 @@ fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financie
 }
 
 // ══ SMART buildContext ════════════════════════════════════════════════════
+// Listes exhaustives extraites par buildContext et rendues DÉTERMINISTEMENT sous la
+// réponse du modèle. Le modèle recopie mal une longue liste (115 à 140 lignes sur 142
+// selon les exécutions) : il rédige l'analyse, le code écrit la liste.
+// Sûr UNIQUEMENT parce que les questions s'enchaînent en série : un appelant parallèle devrait recevoir la liste en retour de buildContext plutôt qu'en portée module.
+let EXHAUSTIVE_LISTS = [];
 async function buildContext(question){
+  EXHAUSTIVE_LISTS = [];   // remise à zéro : une liste d'une question précédente ne doit jamais fuiter
   // Use AI router to determine which tables to query
   console.time('[perf] 1-router');
   const route = await routeQuery(question);
@@ -1321,7 +1327,11 @@ async function buildContext(question){
         const regRows=reg.map(r=>`  [${r.source}] ${r.region}: ${fmtAgg(r)}`).join('\n');
         const monRows=mon.map(r=>`  [${r.source}] ${yr}-${String(r.mois).padStart(2,'0')}: ${n0(r.incidents)} incidents, ${n0(r.morts_total)} morts`).join('\n');
         const detRows=det.map(r=>`  [${r.source}] ${r.incident_date} [${r.region}|${r.province||'?'}/${r.commune||'?'}/${r.location||'?'}] ${r.type_source} — ${r.acteur||'auteur inconnu'} — ${r.source==='OCHA'?n0(r.killed_civilians)+' civils tués · '+n0(r.killed_military)+' militaires tués · '+n0(r.wounded)+' blessés':n0(r.morts_total)+' morts (civils/militaires non distingués)'}${r.displaced_persons?' · '+n0(r.displaced_persons)+' déplacés':''} — ${(r.texte||'').substring(0,260)}`).join('\n');
-        parts.push(`=== THÈME ${label.toUpperCase()} ${yr} [précalculé] (sources: OCHA terrain + ACLED, vues v_incident_themes*) ===\n${yrs.length>1?`RÈGLE 0: question multi-années — présenter chaque année séparément et, si la question compare, indiquer l'écart en valeur et en pourcentage. Ne jamais additionner les années.\n`:''}RÈGLE 1: agrégats PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les en-têtes par région DOIVENT reprendre les chiffres de PAR RÉGION ci-dessous (par source), jamais un comptage des lignes.\nRÈGLE 2: chaque ligne d'incident porte sa source [OCHA] ou [ACLED] — la colonne Source est OBLIGATOIRE dans tout tableau. Présenter OCHA et ACLED séparément ou avec la colonne Source, ne JAMAIS additionner les deux sources (méthodologies différentes).${key==='humanitaires'?' ACLED ne code pas les attaques contre les humanitaires — OCHA est la seule source pour ce thème, ce n\'est pas une lacune.':''} Un même événement peut apparaître dans les deux sources avec des dates/orthographes légèrement différentes : ne pas les fusionner, ne pas les compter deux fois, laisser la colonne Source l'expliquer.\nRÈGLE 3: un incident peut porter plusieurs thèmes (ex. EEI largué par drone) — il apparaît alors dans chaque liste thématique, c'est normal.\nRÈGLE 4: 0 signifie zéro (aucune victime rapportée) ; "?" signifie non renseigné. Ne jamais remplacer 0 par un tiret.\n${det.length>=lim?`ATTENTION: liste tronquée à ${lim} incidents — les agrégats font foi.`:`La liste ci-dessous est EXHAUSTIVE (${det.length} incidents)${wantsList?` — la question demande le détail : lister CHAQUE incident, groupés par région, avec date, localité, auteur et bilan. Ta réponse doit contenir EXACTEMENT ${det.length} lignes d'incident, une par ligne du bloc INCIDENTS ci-dessous. Ne jamais fusionner deux lignes, même lorsqu'elles décrivent le même événement vu par OCHA et par ACLED : elles restent deux lignes distinctes. Ne jamais abréger la liste par « etc. » ni s'arrêter avant la fin`:''}.`}\nAGRÉGATS NATIONAUX:\n${natRows}\nPAR RÉGION:\n${regRows||'  —'}\nPAR MOIS (national):\n${monRows||'  —'}\nINCIDENTS:\n${detRows}`);
+        if(wantsList && det.length < lim && det.length){
+          EXHAUSTIVE_LISTS.push({label, yr, n: det.length,
+            lignes: detRows.split('\n').map(s=>'- '+s.trim()).join('\n')});
+        }
+        parts.push(`=== THÈME ${label.toUpperCase()} ${yr} [précalculé] (sources: OCHA terrain + ACLED, vues v_incident_themes*) ===\n${yrs.length>1?`RÈGLE 0: question multi-années — présenter chaque année séparément et, si la question compare, indiquer l'écart en valeur et en pourcentage. Ne jamais additionner les années.\n`:''}RÈGLE 1: agrégats PRÉCALCULÉS — citer tels quels, ne jamais recompter. Les en-têtes par région DOIVENT reprendre les chiffres de PAR RÉGION ci-dessous (par source), jamais un comptage des lignes.\nRÈGLE 2: chaque ligne d'incident porte sa source [OCHA] ou [ACLED] — la colonne Source est OBLIGATOIRE dans tout tableau. Présenter OCHA et ACLED séparément ou avec la colonne Source, ne JAMAIS additionner les deux sources (méthodologies différentes).${key==='humanitaires'?' ACLED ne code pas les attaques contre les humanitaires — OCHA est la seule source pour ce thème, ce n\'est pas une lacune.':''} Un même événement peut apparaître dans les deux sources avec des dates/orthographes légèrement différentes : ne pas les fusionner, ne pas les compter deux fois, laisser la colonne Source l'expliquer.\nRÈGLE 3: un incident peut porter plusieurs thèmes (ex. EEI largué par drone) — il apparaît alors dans chaque liste thématique, c'est normal.\nRÈGLE 4: 0 signifie zéro (aucune victime rapportée) ; "?" signifie non renseigné. Ne jamais remplacer 0 par un tiret.\n${det.length>=lim?`ATTENTION: liste tronquée à ${lim} incidents — les agrégats font foi.`:`La liste ci-dessous est EXHAUSTIVE (${det.length} incidents)${wantsList?` — la question demande le détail. La liste complète des ${det.length} incidents sera AJOUTÉE AUTOMATIQUEMENT sous ta réponse par l'application : ne la reproduis pas, ne la résume pas, ne la recopie pas même partiellement. Rédige uniquement l'ANALYSE : les agrégats par source et par région, l'évolution dans le temps, les zones et les auteurs les plus concernés, ce qui ressort de la période. N'inclus AUCUNE ligne d'incident datée dans ton analyse — pas de date au format AAAA-MM-JJ, pas d'énumération d'incidents individuels`:''}.`}\nAGRÉGATS NATIONAUX:\n${natRows}\nPAR RÉGION:\n${regRows||'  —'}\nPAR MOIS (national):\n${monRows||'  —'}\nINCIDENTS:\n${detRows}`);
       }
     }
   }
@@ -1428,6 +1438,19 @@ ${sem||'  —'}`);
   const _ctx=parts.join('\n\n');
   console.log('[perf] context size:', _ctx.length, 'chars ≈', Math.round(_ctx.length/4), 'tokens | par section:', parts.map(p=>`${(p.split('\n')[0]||'').substring(0,40)}: ${p.length}`).join(' · '));
   return _ctx;
+}
+
+// Ajoute sous la réponse du modèle les listes exhaustives que buildContext a retenues.
+// Rendu 100% déterministe : aucune ligne ne peut être oubliée, fusionnée ni abrégée.
+function appendExhaustiveLists(answer){
+  if(!EXHAUSTIVE_LISTS.length) return answer;
+  const blocs = EXHAUSTIVE_LISTS.map(l =>
+    `## Liste complète — ${l.label} ${l.yr} (${l.n} incidents)\n\n`+
+    `*Liste générée directement depuis la base de données. Source indiquée pour chaque ligne : `+
+    `[OCHA] rapports terrain, [ACLED] sources ouvertes. Les deux sources ne sont pas additionnées.*\n\n`+
+    l.lignes
+  ).join('\n\n');
+  return `${answer}\n\n---\n\n${blocs}`;
 }
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════════════
@@ -1643,6 +1666,7 @@ async function runSituation(){
       const cutIdx=fastAnswer.search(cutRx);
       if(cutIdx>0)fastAnswer=fastAnswer.slice(0,cutIdx).trimEnd();
       fastAnswer = enforceTerminologyRules(fastAnswer).text;
+      fastAnswer = appendExhaustiveLists(fastAnswer);
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Réponse rapide · ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(fastAnswer)}">${renderMD(fastAnswer)}</div></div>`;
       btn.disabled=false;btn.textContent='Analyser →';document.getElementById('sitInput').value='';
@@ -1657,6 +1681,7 @@ async function runSituation(){
       console.timeEnd('[perf] 3-sonnet-synthesis');
       let answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
       answer = enforceTerminologyRules(answer).text;
+      answer = appendExhaustiveLists(answer);
       const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
       window._fbData=window._fbData||{};window._fbData[lid]={question,answer};
       document.getElementById(lid).outerHTML=`<div class="sit-res-card"><div class="res-meta"><div class="res-icon">🌍</div><div><div class="res-title">${question}</div><div class="res-time">Généré à ${now}</div></div><button class="btn-copy" onclick="copyTxt(this)">Copier</button></div><div class="res-body" data-raw="${encodeURIComponent(answer)}">${renderMD(answer)}</div><div class="fb-zone" id="fbz-${lid}"><div class="fb-label">Évaluer cette réponse</div><div class="fb-btns"><button class="fb-btn score-5" onclick="selectRating(this,'${lid}',5,'Très bien')">Très bien</button><button class="fb-btn score-4" onclick="selectRating(this,'${lid}',4,'Bien')">Bien</button><button class="fb-btn score-3" onclick="selectRating(this,'${lid}',3,'Moyen')">Moyen</button><button class="fb-btn score-2" onclick="selectRating(this,'${lid}',2,'Mauvais')">Mauvais</button><button class="fb-btn score-1" onclick="selectRating(this,'${lid}',1,'Très mauvais')">Très mauvais</button></div><div class="fb-comment-row" id="fbcr-${lid}" style="display:none"><textarea class="fb-comment" id="fbcmt-${lid}" placeholder="Commentaire (optionnel)..."></textarea><button class="fb-send" onclick="saveFeedback('${lid}')">Envoyer →</button></div></div></div>`;
@@ -1692,6 +1717,7 @@ window.qaAnswer = async function(question, mode='rapide'){
   if(data.error) throw new Error(data.error.message||'proxy error');
   let answer=data.content?.[0]?.text||'';
   answer=enforceTerminologyRules(answer).text;
+  answer=appendExhaustiveLists(answer);
   return {answer, context, latency_ms:Math.round(performance.now()-t0)};
 };
 window.qaReady = (async()=>{ await geoMapsReady; return true; })();
