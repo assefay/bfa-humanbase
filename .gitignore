@@ -1,0 +1,2 @@
+# SECURITY: admin.html contains a secret service_role key — never commit this file
+admin.html
