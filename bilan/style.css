@@ -179,6 +179,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
 /* ---------- print ---------- */
 @page{size:A4 landscape;margin:0}
 @media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{background:#fff}
   .chrome,.note{display:none!important}
   .stage{padding:0;display:block;overflow:visible}
