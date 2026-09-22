@@ -115,15 +115,20 @@ function disagg(el){
 }
 function drawMap(el,items,{view,height=300,onClick,selected,outline=true,big=false}={}){
   const vb=view||[0,0,GEO.W,GEO.H];
-  el.innerHTML=`<svg class="map ${big?'big':''}" style="height:${height}px" viewBox="${vb.join(' ')}" preserveAspectRatio="xMidYMid meet" role="img">
+  // taille des étiquettes en unités SVG pour rester lisible (~10 px à l'écran et à l'impression) quelle que soit la taille de la carte
+  const w=el.clientWidth||el.parentElement?.clientWidth||0;
+  const scale=Math.min(w?w/vb[2]:Infinity,height/vb[3]);
+  const fl=(big?10.5:10)/scale, fv=(big?9.5:9)/scale;
+  el.innerHTML=`<svg class="map ${big?'big':''}" style="height:${height}px;--fl:${fl.toFixed(2)}px;--fv:${fv.toFixed(2)}px" viewBox="${vb.join(' ')}" preserveAspectRatio="xMidYMid meet" role="img">
    ${items.map(i=>`<path class="${i.cls} ${i.key===selected?'sel':''}" d="${i.geo.d}" data-k="${i.key}"><title>${i.title||i.label}</title></path>`).join('')}
    ${outline?`<path class="adm0" d="${GEO.R.map(r=>r.d).join('')}"/>`:''}
-   ${items.map(i=>i.label?`<text class="${i.dark?'dk':''}" x="${i.geo.c[0]}" y="${i.geo.c[1]-1}">${i.label}</text><text class="v ${i.dark?'dk':''}" x="${i.geo.c[0]}" y="${i.geo.c[1]+(big?11:9)}">${i.value}</text>`:'').join('')}
+   ${items.map(i=>i.label?`<text class="${i.dark?'dk':''}" x="${i.geo.c[0]}" y="${i.geo.c[1]-fv*0.15}">${i.label}</text><text class="v ${i.dark?'dk':''}" x="${i.geo.c[0]}" y="${i.geo.c[1]+fv*1.05}">${i.value}</text>`:'').join('')}
   </svg>`;
   if(onClick)el.querySelectorAll('path[data-k]').forEach(p=>p.addEventListener('click',()=>onClick(p.dataset.k)));
 }
 function regionMap(el,regions,onClick,height,big){
-  drawMap(el,regions.filter(r=>geoR(r.n)).map(r=>{const p=pct(r.a,r.c);const cls=sev(p===null&&r.a?101:p);return{geo:geoR(r.n),cls,key:r.n,label:r.n,value:fp(r.a,r.c),dark:cls==='s3'||cls==='s4',title:`${r.n} — ${fk(r.a)} atteints / ${f(r.c)} ciblées`}}),{onClick,height,big});
+  // petite carte : les régions sans cible ni atteint ne sont pas étiquetées (le centre du pays reste lisible) ; l'infobulle garde le nom
+  drawMap(el,regions.filter(r=>geoR(r.n)).map(r=>{const p=pct(r.a,r.c);const cls=sev(p===null&&r.a?101:p);const has=r.c||r.a;return{geo:geoR(r.n),cls,key:r.n,label:(big||has)?r.n:'',value:has?fp(r.a,r.c):'',dark:cls==='s3'||cls==='s4',title:`${r.n} — ${fk(r.a)} atteints / ${f(r.c)} ciblées`}}),{onClick,height,big});
 }
 // progression cumulée : series = {mois: valeur}
 function timeline(el,series){const vals=Object.values(series);const max=Math.max(1,...vals);

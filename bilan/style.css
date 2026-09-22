@@ -144,9 +144,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
 .map path.v2{fill:#BBD9F2} .map path.v3{fill:#5B9BD5} .map path.v4{fill:#1F4E79}
 .map path.sel{stroke:var(--ocha);stroke-width:2.5}
 .map path:hover{stroke:var(--ink);stroke-width:1.5}
-.map text{font-family:var(--cond);font-size:9px;font-weight:700;fill:#44546A;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:2.5px;stroke-linejoin:round;text-transform:uppercase}
-.map text.v{font-family:var(--font);font-weight:400;font-size:8px;text-transform:none;fill:var(--ink)}
-.map.big text{font-size:11px} .map.big text.v{font-size:10px}
+/* --fl / --fv sont calculés par drawMap() pour rester ~10 px à l'écran quelle que soit l'échelle de la carte */
+.map text{font-family:var(--cond);font-size:var(--fl,9px);font-weight:700;fill:#44546A;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:.3em;stroke-linejoin:round;text-transform:uppercase}
+.map text.v{font-family:var(--font);font-weight:400;font-size:var(--fv,8px);text-transform:none;fill:var(--ink)}
 .map text.dk{fill:#fff;stroke:#1F4E79} .map text.dk.v{fill:#fff}
 .map .adm0{fill:none;stroke:#8C96A0;stroke-width:1.2;pointer-events:none}
 .legend{display:flex;gap:10px;font-size:9px;color:var(--ink2);margin-top:4px;align-items:center;flex-wrap:wrap}
