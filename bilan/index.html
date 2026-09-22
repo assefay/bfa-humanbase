@@ -9,7 +9,7 @@
 </head>
 <body>
 <div class="chrome" id="chrome">
-  <div class="brand"><b>BILAN 2026</b><span>maquette</span></div>
+  <div class="brand"><b>BILAN 2026</b><span>Burkina Faso · HumanBase</span></div>
   <div class="lens" role="tablist" aria-label="Perspective">
     <button id="tab-global" aria-pressed="true" data-lens="global">Global</button>
     <button id="tab-fin" aria-pressed="false" data-lens="fin">Financement</button>
@@ -19,10 +19,11 @@
   <div class="months" id="months" aria-label="Mois"></div>
   <label class="pick" id="pick-cluster" hidden>Cluster <select id="sel-cluster"></select></label>
   <label class="pick" id="pick-region" hidden>Région <select id="sel-region"></select></label>
+  <span class="status" id="status"></span>
   <button class="print" id="btn-print" type="button">Imprimer cette vue</button>
   <button class="print" id="btn-print-all" type="button">Tout imprimer (5 p.)</button>
 </div>
-<p class="note"><b>Comment lire cette maquette :</b> chaque feuille est une page A4 paysage — ce que vous voyez est ce qui s'imprime. La vue globale tient sur deux feuilles (réponse, géographie), le financement sur une. Juillet 2026 = chiffres réels de la base ; financement FTS au 18 septembre ; les autres mois, les croisements cluster × région et les indicateurs régionaux sont extrapolés pour l'échelle. Une donnée absente de la base s'affiche « non disponible » (ex. désagrégation Nutrition, indicateurs Réfugiés).</p>
+<p class="note"><b>Suivi de la réponse humanitaire 2026.</b> Chaque feuille est une page A4 paysage ; ce que vous voyez est ce qui s'imprime. Les données proviennent de la base HumanBase (clusters, HPC 2026, FTS) et suivent le mois sélectionné. Une donnée absente s'affiche « non disponible ».</p>
 
 <div class="stage" id="stage"><div class="sheets" id="sheets">
 
@@ -120,7 +121,7 @@
     </div>
     <div class="stack">
       <div>
-        <div class="sec">Régions — ciblées et priorisées <small>extrapolé</small></div>
+        <div class="sec">Régions — ciblées et priorisées</div>
         <div class="tbl" id="c-table" style="--rh:15px"></div>
       </div>
       <div><div class="sec">Atteints selon la sévérité</div><div class="sevcmp" id="c-sev"></div></div>
@@ -153,7 +154,7 @@
     </div>
     <div class="stack">
       <div>
-        <div class="sec">Clusters dans la région (<span id="r-name-2"></span>) <small>extrapolé</small></div>
+        <div class="sec">Clusters dans la région (<span id="r-name-2"></span>)</div>
         <div class="tbl" id="r-table"></div>
       </div>
       <div><div class="sec">Progression cumulée 2026</div><div class="tl" id="r-tl"></div></div>
@@ -164,7 +165,7 @@
 <!-- ===== RÉGION 2/2 : INDICATEURS ===== -->
 <article class="paper" data-lens="region" data-title="Perspective régionale · indicateurs">
   <section class="view" id="v-region2" style="grid-template-rows:auto 1fr;gap:10px">
-    <div class="sec">Réalisation par indicateur clé et par cluster — <span id="r-name-3"></span> <small>valeurs régionales extrapolées pour la maquette ; la structure suit le Bilan régional</small></div>
+    <div class="sec">Réalisation par indicateur clé et par cluster — <span id="r-name-3"></span> <small>structure du Bilan régional</small></div>
     <div class="ind" id="r-ind"></div>
   </section>
 </article>
