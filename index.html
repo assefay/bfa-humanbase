@@ -774,6 +774,13 @@ function enforceSourcingRules(routerOutput, query) {
   if (/personnes dans le besoin|dans le besoin|population dans le besoin|besoins par province|ampleur|cibles?|\bpin\b/.test(q)) {
     add('hpc_pin', 'rule4-pin');
   }
+  // Règle 4 bis : groupes de population HPC 2026 (stock de PDI / retournés / réfugiés / non-déplacés)
+  // Le stock 2026 par région/province vient de hpc_disagg (colonnes pdi, retournes, refugies, non_deplaces).
+  // GCORR reste la source des FLUX de nouveaux déplacements — les deux coexistent, on n'en retire aucune.
+  if (/retourn[ée]s?|personnes? retourn|\bpdi\b|d[ée]plac[ée]s? internes?|r[ée]fugi[ée]s?|non[- ]d[ée]plac[ée]s?|groupes? de population|population de base/.test(q)) {
+    add('hpc_disagg', 'rule4bis-popgroup');
+    add('hpc_pin', 'rule4bis-popgroup');
+  }
   // Règle 5 : financement — le vocabulaire financier est distinctif, on force la table
   if (/financement|financé|financee|bailleur|donateur|fonds|budget|couverture financière|couverture financiere|déficit|deficit|\bgap\b|besoins financiers|us\$|usd|millions? de dollars|hnrp financé|plan financé/.test(q)) {
     add('fts_financement', 'rule5-financement');
@@ -1166,8 +1173,8 @@ async function buildContext(question){
     const pin=await sb(`v_hpc_pin_summary?select=*&region=ilike.*${encodeURIComponent(region)}*&order=niveau.desc,ligne.asc,cluster.asc.nullsfirst`);
     console.log('[diag] hpc_pin view rows:', pin.length);
     if(pin.length){
-      const rows=pin.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PIN PDI '+fmtNum(r.pin_pdi)+' · PIN retournés '+fmtNum(r.pin_retournes)+' · PIN non-dépl. '+fmtNum(r.pin_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
-      parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS — citer tels quels, ne JAMAIS recalculer ni additionner des lignes. Le total officiel = ligne INTERSECTORIEL (jamais la somme des secteurs). Protection totale = secteur PRO (jamais la somme des AoR LAM/LTB/PE/VBG). Réfugiés = caseload autonome, jamais additionné à l'intersectoriel.\n${rows}`);
+      const rows=pin.map(r=>`  [${r.niveau==='region'?'RÉGION '+r.region+' (TOTAL)':r.province}] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PDI: population '+n0(r.pop_pdi)+' / PIN '+n0(r.pin_pdi)+' / CIBLE '+n0(r.cible_pdi)+' · RETOURNÉS: population '+n0(r.pop_retournes)+' / PIN '+n0(r.pin_retournes)+' / CIBLE '+n0(r.cible_retournes)+' · NON-DÉPLACÉS: population '+n0(r.pop_non_deplaces)+' / PIN '+n0(r.pin_non_deplaces)+' / CIBLE '+n0(r.cible_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
+      parts.push(`=== PIN/CIBLE HPC 2026 — ${region} [précalculé] (source: HPC 2026) ===\nRÈGLE: DÉFINITIONS — pour chaque groupe (PDI, retournés, non-déplacés) : « population » = NOMBRE TOTAL de personnes de ce groupe (stock HPC 2026, baseline) — c'est la réponse à « combien de retournés / de PDI » ; « PIN » = celles dans le besoin ; « CIBLE » = celles ciblées par la réponse. Ne jamais donner le PIN comme nombre de retournés ou de PDI. Chiffres PRÉCALCULÉS — citer tels quels, ne JAMAIS recalculer ni additionner des lignes. Le total officiel = ligne INTERSECTORIEL (jamais la somme des secteurs). Protection totale = secteur PRO (jamais la somme des AoR LAM/LTB/PE/VBG). Réfugiés = caseload autonome, jamais additionné à l'intersectoriel.\n${rows}`);
     }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN pour ${region}.`);}
   }
   // HPC désagrégé (âge/sexe/handicap/groupe de population)
@@ -1227,12 +1234,30 @@ async function buildContext(question){
 
   // HPC PIN / CIBLE 2026 — national (portée nationale uniquement)
   if((isAll||hasTable('hpc_pin')) && (!route.regions || route.regions.length===0)){
-    const pin=await sb(`v_hpc_pin_summary?select=*&niveau=eq.national&order=ligne.asc`);
+    // Niveau demandé pour la ventilation par groupe : « par province » → 47 provinces, « par région » → 17 régions, sinon national seul
+    const nivPin=/\bprovinces?\b/i.test(question||'')?'province':(/\br[ée]gions?\b/i.test(question||'')?'region':null);
+    const pin=await sb(nivPin
+      ? `v_hpc_pin_summary?select=*&or=(niveau.eq.national,and(niveau.eq.${nivPin},ligne.like.INTERSECT*))&order=niveau.desc,region.asc,province.asc,ligne.asc,cluster.asc.nullsfirst`
+      : `v_hpc_pin_summary?select=*&niveau=eq.national&order=ligne.asc`);
+    console.log('[diag] hpc_pin national — niveau ventilation:', nivPin);
     console.log('[diag] hpc_pin national view rows:', pin.length);
     if(pin.length){
-      const rows=pin.map(r=>`  [NATIONAL] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PIN PDI '+fmtNum(r.pin_pdi)+' · retournés '+fmtNum(r.pin_retournes)+' · non-dépl. '+fmtNum(r.pin_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
-      parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 — NATIONAL [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS officiels — citer tels quels, ne jamais recalculer.\n${rows}`);
+      const rows=pin.map(r=>`  [${r.niveau==='national'?'NATIONAL':(r.niveau==='region'?'RÉGION '+r.region:r.region+' / '+r.province)}] ${r.ligne}${r.cluster?' '+r.cluster:''}: PIN ${fmtNum(r.pin)} · cible ${fmtNum(r.cible)} (couverture ${r.pct_couverture}%)${r.pin_pdi!=null?' · PDI: population '+n0(r.pop_pdi)+' / PIN '+n0(r.pin_pdi)+' / CIBLE '+n0(r.cible_pdi)+' · RETOURNÉS: population '+n0(r.pop_retournes)+' / PIN '+n0(r.pin_retournes)+' / CIBLE '+n0(r.cible_retournes)+' · NON-DÉPLACÉS: population '+n0(r.pop_non_deplaces)+' / PIN '+n0(r.pin_non_deplaces)+' / CIBLE '+n0(r.cible_non_deplaces):''}${r.population!=null?' · population base '+fmtNum(r.population):''}`).join('\n');
+      parts.push(`=== PIN/CIBLE INTERSECTORIEL HPC 2026 — NATIONAL${nivPin?' + ventilation par '+(nivPin==='province'?'PROVINCE (47, libellé RÉGION / PROVINCE)':'RÉGION (17)'):''} [précalculé] (source: HPC 2026) ===\nRÈGLE: DÉFINITIONS — pour chaque groupe (PDI, retournés, non-déplacés) : « population » = NOMBRE TOTAL de personnes de ce groupe (stock HPC 2026, baseline) — c'est la réponse à « combien de retournés / de PDI » ; « PIN » = celles dans le besoin ; « CIBLE » = celles ciblées par la réponse. Ne jamais donner le PIN comme nombre de retournés ou de PDI. Chiffres PRÉCALCULÉS officiels — citer tels quels, ne jamais recalculer. Les TOTAUX NATIONAUX par groupe de population (PDI, retournés, non-déplacés), en PIN comme en CIBLE, sont UNIQUEMENT ceux de cette ligne INTERSECTORIEL — ne jamais les reconstituer en additionnant des régions ou des provinces. Une valeur 0 pour un groupe alors que le total est > 0 signifie « non ventilé par groupe dans le HPC » — le dire, ne pas estimer.\n${rows}`);
     }else{gaps.push('PIN HPC 2026');parts.push(`=== PIN HPC 2026 ===\nAucune donnée PIN intersectorielle.`);}
+  }
+  // HPC DÉSAGRÉGÉ 2026 — national : une ligne par RÉGION (groupes de population + âge/sexe/handicap)
+  // Répond aux questions « par région » sans région nommée (PDI, retournés, réfugiés, non-déplacés…).
+  if((isAll||hasTable('hpc_disagg')) && (!route.regions || route.regions.length===0)){
+    // Niveau demandé : « par province » → 47 provinces, sinon → 17 régions (déterministe, sur le texte de la question)
+    const nivDis=/\bprovinces?\b/i.test(question||'')?'province':'region';
+    const disN=await sb(`v_hpc_disagg_summary?select=*&niveau=eq.${nivDis}&order=figure_type.asc,region.asc,province.asc`);
+    console.log('[diag] hpc_disagg national — niveau:', nivDis);
+    console.log('[diag] hpc_disagg national (par région) rows:', disN.length);
+    if(disN.length){
+      const rows=disN.map(r=>`  [${nivDis==='province'?r.region+' / '+r.province:r.region}] ${r.figure_type}: total ${n0(r.total)} · PDI ${n0(r.pdi)} · retournés ${n0(r.retournes)} · non-dépl. ${n0(r.non_deplaces)} · réfugiés ${n0(r.refugies)} · enfants(0-17) ${n0(r.enfants)} (${r.pct_enfants}%) · femmes(18+) ${n0(r.femmes)} (${r.pct_femmes}%) · femmes+filles ${n0(r.femmes_et_filles)} (${r.pct_femmes_filles}%) · pers. âgées(65+) ${n0(r.agees_65plus)} (${r.pct_65plus}%) · handicap ${n0(r.handicap)} (${r.pct_handicap}%)`).join('\n');
+      parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 — PAR ${nivDis==='province'?'PROVINCE (47 provinces, libellé RÉGION / PROVINCE)':'RÉGION (17 régions)'} [précalculé] (source: HPC 2026) ===\nRÈGLE: chiffres PRÉCALCULÉS par région — citer tels quels, ne JAMAIS additionner les lignes (régions ou provinces) pour obtenir un total (le national officiel = bloc PIN/CIBLE INTERSECTORIEL NATIONAL). PDI / retournés / réfugiés / non-déplacés = STOCK 2026 par groupe de population (HPC), distinct des FLUX de nouveaux déplacements (GCORR). PIN = personnes dans le besoin ; CIBLE = personnes ciblées par la réponse. Le TOTAL NATIONAL de chaque groupe (PIN et CIBLE) se trouve EXCLUSIVEMENT dans le bloc PIN/CIBLE INTERSECTORIEL NATIONAL ; s'il n'y figure pas, écrire « total national non disponible » plutôt que le calculer.\n${rows}`);
+    }else{gaps.push('Désagrégation HPC 2026');parts.push(`=== PIN/CIBLE DÉSAGRÉGÉ HPC 2026 — PAR RÉGION ===\nAucune donnée désagrégée par région.`);}
   }
   // COUVERTURE RÉPONSE — national
   if((isAll||hasTable('cluster_reached')) && (!route.regions || route.regions.length===0)){
