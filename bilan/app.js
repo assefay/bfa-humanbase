@@ -316,9 +316,10 @@ function render(){
   document.getElementById('pick-cluster').hidden=lens!=='cluster';document.getElementById('pick-region').hidden=lens!=='region';
   document.getElementById('sel-cluster').value=cluster;document.getElementById('sel-region').value=region;
   document.querySelectorAll('#months button').forEach((b,i)=>b.setAttribute('aria-pressed',i+1===month));
-  const sub={global:'',fin:'',cluster:' — '+clName(cluster),region:' — '+region}[lens];
+  // titre de chaque feuille avec son cluster / sa région, quelle que soit la vue affichée (utile pour « Tout imprimer »)
+  const sub={global:'',fin:'',cluster:' — '+clName(cluster),region:region?' — '+region:''};
   const F=finFor();
-  document.querySelectorAll('.paper').forEach(p=>{p.querySelector('.lensname').textContent=p.dataset.title+(p.dataset.lens===lens?sub:'');
+  document.querySelectorAll('.paper').forEach(p=>{p.querySelector('.lensname').textContent=p.dataset.title+sub[p.dataset.lens];
     p.querySelector('.period').textContent=(p.dataset.lens==='fin'?(F?`FTS à fin ${LONG[month-1].toLowerCase()} 2026`:`${LONG[month-1]} 2026 — financement non disponible`):LONG[month-1]+' 2026')});
   ({global:renderGlobal,fin:renderFin,cluster:renderCluster,region:renderRegion})[lens]();
   fit();
