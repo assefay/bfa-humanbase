@@ -23,7 +23,7 @@ const CL=[
  {k:'SECAL',n:'Sécurité alimentaire'},{k:'WASH',n:'EHA'},{k:'SANTE',n:'Santé'},{k:'PRO',n:'Protection'},{k:'EDU',n:'Éducation'},
  {k:'NUT',n:'Nutrition'},{k:'ABRIS',n:'Abris/AME'},{k:'GSAT',n:'GSAT'},{k:'refugee',n:'Réfugiés',fts:'REFUGIES'},
 ];
-const FIN_ONLY={LOG:'Logistique',COORD:'Coordination',MULTI:'Multi-clusters',NON_RAPPORTE:'Non rapporté'};
+const FIN_ONLY={LOG:'Logistique',COORD:'Coordination',MULTI:'MCP (multi-clusters partagés)',NON_RAPPORTE:'Non spécifié'};
 const ftsCode=k=>(CL.find(c=>c.k===k)||{}).fts||k;
 const fromFts=code=>(CL.find(c=>(c.fts||c.k)===code)||{}).k||code;
 const clName=k=>k==='PLAN'?'Plan 2026':k===INT?'Intersectoriel':(CL.find(c=>c.k===k)||{}).n||FIN_ONLY[k]||k;
@@ -37,6 +37,12 @@ const SHORT=[[/European Commission's Humanitarian Aid.*/,'ECHO'],[/^(.+), Govern
  [/Agency for Technical Cooperation and Development/,'ACTED'],[/Cooperazione Internazionale - COOPI/,'COOPI'],[/Solidarités International/,'Solidarités Int.'],
  [/Global Partnership for Education/,'GPE'],[/Multi-donor flexible humanitarian contribution.*/,'UNICEF thématique'],[/Private \(individuals & organizations\)/,'Privé'],
  [/Educo - .*/,'Educo'],[/Office de Développement des Eglises Evangéliques/,'ODE'],[/Handicap International.*/,'HI'],[/WeWorld.*/,'WeWorld'],[/Progettomondo.*/,'Progettomondo']];
+const PAYS={Germany:'Allemagne',Belgium:'Belgique',Canada:'Canada','United States of America':'Etats Unis',Switzerland:'Suisse',Italy:'Italie',Norway:'Norvège',
+ Japan:'Japon',Sweden:'Suède',Denmark:'Danemark','Korea, Republic of':'République de Corée','Saudi Arabia (Kingdom of)':'Arabie Saoudite',Spain:'Espagne',
+ Luxembourg:'Luxembourg',Austria:'Autriche',Iceland:'Islande',Monaco:'Monaco',Cyprus:'Chypre','United Kingdom':'Royaume-Uni',France:'France',
+ Netherlands:'Pays-Bas',Ireland:'Irlande',Finland:'Finlande',Australia:'Australie','Czech Republic':'République tchèque',Qatar:'Qatar',Kuwait:'Koweït'};
+const DONOR_GROUP=[[/^Swedish International Development Cooperation Agency/,'Suède']];
+const donorName=n=>{for(const [re,to] of DONOR_GROUP)if(re.test(n))return to;const m=n.match(/^(.+), Government of$/);return m?(PAYS[m[1]]||m[1]):short(n)};
 const short=n=>{for(const [re,to] of SHORT){if(re.test(n))return n.replace(re,to)}return n};
 
 /* ---------- état ---------- */
@@ -98,7 +104,7 @@ function indtable(el,rows,{prio=true,cols}={}){
   const n=v=>v==null?'—':fk(v), p=(a,c)=>c?fp(a,c):'—';
   el.innerHTML=head+rows.map(r=>`<div class="tr">${prio?`<span class="cl">${r.cl}</span>`:''}<span class="lab">${r.lab}</span><span class="v vc">${n(r.c)}</span><span class="v va">${n(r.a)}</span><span class="pct"><b>${p(r.a,r.c)}</b></span>${prio?`<span></span><span class="v vp">${r.c4!=null?n(r.c4):'—'}</span><span class="v vq">${r.a4!=null?n(r.a4):'—'}</span><span class="pct">${r.c4?fp(r.a4,r.c4):''}</span>`:''}</div>`).join('');
 }
-function hbars(el,items,max){el.innerHTML=items.length?items.map(([n,v])=>`<div class="r"><span class="n" title="${n}">${short(n)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="v">${fm(v)}</span></div>`).join(''):`<div class="na">Non disponible</div>`}
+function hbars(el,items,max){el.innerHTML=items.length?items.map(([n,v,o])=>`<div class="r${o?' oth':''}"><span class="n" title="${n}">${short(n)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="v">${fm(v)}</span></div>`).join(''):`<div class="na">Non disponible</div>`}
 function sevcmp(el,{c4,a4,c3,a3}){
   const p4=pct(a4,c4),p3=pct(a3,c3);
   el.innerHTML=`<div class="r"><span class="n"><span class="badge s4">4</span>Sévérité 4 · priorisées</span><span class="track"><i style="width:${Math.min(100,p4||0)}%"></i></span><span class="v"><b>${fk(a4)}</b> / ${f(c4)} · <b>${fp(a4,c4)}</b></span></div>
@@ -190,8 +196,11 @@ function finFor(){ // financement du mois : null si absent
   const req=k=>+(byCode[k]||{}).requis_usd/1e6||0, fin=k=>+(byCode[k]||{}).recu_usd/1e6||0;
   return{byCode,req,fin,totalReq:rows.filter(r=>r.categorie==='cluster').reduce((s,r)=>s+(+r.requis_usd||0),0)/1e6,totalFin:rows.reduce((s,r)=>s+(+r.recu_usd||0),0)/1e6,asof:rows[0].as_of_date};
 }
-function orgsFor(scope,role,n){
-  return cur().orgs.filter(o=>o.scope===scope&&o.role===role).sort((a,b)=>b.montant_usd-a.montant_usd).slice(0,n).map(o=>[o.organisation,+o.montant_usd/1e6]);
+// top n (+ ligne « Autres » si other=true) ; bailleurs regroupés par pays (donorName)
+function orgsFor(scope,role,n,other){
+  const by={};cur().orgs.filter(o=>o.scope===scope&&o.role===role).forEach(o=>{const k=role==='bailleur'?donorName(o.organisation):o.organisation;by[k]=(by[k]||0)+ +o.montant_usd/1e6});
+  const all=Object.entries(by).sort((a,b)=>b[1]-a[1]), top=all.slice(0,n), rest=all.slice(n).reduce((s,x)=>s+x[1],0);
+  return other&&rest>0.05?[...top,['Autres',rest,true]]:top;
 }
 
 /* ---------- rendu des feuilles ---------- */
@@ -213,18 +222,18 @@ function renderFin(){
   const F=finFor();
   const info=document.getElementById('f-info');
   if(!F){kpis(document.getElementById('f-kpis'),[{cls:'r',v:'—',l:'Fonds requis (USD)'},{cls:'f',v:'—',l:'Fonds reçus'},{cls:'f',v:'—',l:'% couvert'}]);
-    info.innerHTML=`<b>Financement non disponible pour ${LONG[month-1].toLowerCase()} 2026.</b> Aucun instantané FTS n'a été chargé pour ce mois.`;
+    info.hidden=false;info.innerHTML=`<b>Financement non disponible pour ${LONG[month-1].toLowerCase()} 2026.</b> Aucun instantané FTS n'a été chargé pour ce mois.`;
     document.getElementById('f-table').innerHTML='<div class="na">Non disponible</div>';['f-donors','f-recip'].forEach(id=>document.getElementById(id).innerHTML='<div class="na">Non disponible</div>');
     ['f-sel-1','f-sel-2'].forEach(id=>document.getElementById(id).textContent='');document.getElementById('f-note').innerHTML='';return}
   kpis(document.getElementById('f-kpis'),[{cls:'r',v:fm(F.totalReq),l:'Fonds requis (USD)'},{cls:'f',v:fm(F.totalFin),l:'Fonds reçus'},{cls:'f',v:fp(F.totalFin,F.totalReq),l:'% couvert'}]);
-  info.innerHTML=`<b>Plan de réponse humanitaire 2026 — FTS à fin ${LONG[month-1].toLowerCase()} 2026 (export du ${dateFr(F.asof)}).</b> Total du plan = flux entrants hors promesses ; les retransferts internes ne sont pas comptés pour éviter les doubles comptes. Les flux multi-clusters et non rapportés sont inclus dans le total mais ne sont pas ventilés par cluster.`;
+  info.innerHTML='';info.hidden=true;
   const rows=cur().fin.map(r=>({k:r.categorie==='cluster'?fromFts(r.cluster_code):null,n:clName(fromFts(r.cluster_code)),req:+r.requis_usd/1e6||0,fin:+r.recu_usd/1e6||0,rec:r.categorie!=='cluster'})).sort((a,b)=>(b.req-a.req)||(b.fin-a.fin));
   ftable(document.getElementById('f-table'),rows,{n:'Plan 2026 — tous clusters',req:F.totalReq,fin:F.totalFin},k=>{finSel=k;renderFin()},finSel);
   const scope=finSel==='PLAN'?'PLAN':ftsCode(finSel);
   ['f-sel-1','f-sel-2'].forEach(id=>document.getElementById(id).textContent=clName(finSel));
-  const d=orgsFor(scope,'bailleur',10),r=orgsFor(scope,'destinataire',10);
-  hbars(document.getElementById('f-donors'),d,d[0]?d[0][1]:1);hbars(document.getElementById('f-recip'),r,r[0]?r[0][1]:1);
-  document.getElementById('f-note').innerHTML=finSel==='PLAN'?'<span>Ensemble des flux entrants du plan, tous clusters confondus.</span>':`<span>Flux affectés à ce seul cluster ; les flux multi-clusters (${fm(F.fin('MULTI'))}) et non rapportés (${fm(F.fin('NON_RAPPORTE'))}) ne sont pas ventilés et n'apparaissent pas ici.</span>`;
+  const d=orgsFor(scope,'bailleur',10,true),r=orgsFor(scope,'destinataire',10,true);
+  hbars(document.getElementById('f-donors'),d,Math.max(1e-9,...d.map(x=>x[1])));hbars(document.getElementById('f-recip'),r,Math.max(1e-9,...r.map(x=>x[1])));
+  document.getElementById('f-note').innerHTML=finSel==='PLAN'?'':`<span>Flux affectés à ce seul cluster ; les flux multi-clusters partagés (MCP, ${fm(F.fin('MULTI'))}) et non spécifiés (${fm(F.fin('NON_RAPPORTE'))}) ne sont pas ventilés et n'apparaissent pas ici.</span>`;
 }
 function renderCluster(){
   const c=CL.find(x=>x.k===cluster), T=agg(provRows(c.k)), F=finFor(), code=ftsCode(c.k);

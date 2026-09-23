@@ -90,6 +90,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
 .hb .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hb .t{height:11px;background:var(--track);border-radius:1px;position:relative} .hb .t i{position:absolute;inset:0 auto 0 0;background:var(--fin);border-radius:1px}
 .hb .v{text-align:right;color:var(--ink2)}
+.hb .r.oth .t i{background:var(--req)} .hb .r.oth .n{color:var(--ink2);font-style:italic}
 
 .hb.sm .r{grid-template-columns:104px 1fr 40px;height:13px;font-size:9.5px} .hb.sm .t{height:9px}
 .tbl .tr.tot button.n{font-weight:700}
