@@ -131,9 +131,10 @@ function regionMap(el,regions,onClick,height,big){
   drawMap(el,regions.filter(r=>geoR(r.n)).map(r=>{const p=pct(r.a,r.c);const cls=sev(p===null&&r.a?101:p);const has=r.c||r.a;return{geo:geoR(r.n),cls,key:r.n,label:(big||has)?r.n:'',value:has?fp(r.a,r.c):'',dark:cls==='s3'||cls==='s4',title:`${r.n} — ${fk(r.a)} atteints / ${f(r.c)} ciblées`}}),{onClick,height,big});
 }
 // progression cumulée : series = {mois: valeur}
+// hauteur des barres relative à la hauteur du bloc .tl (moins les deux lignes de texte) : le graphique s'adapte à l'espace de la feuille
 function timeline(el,series){const vals=Object.values(series);const max=Math.max(1,...vals);
-  el.innerHTML=MONTHS.map((m,i)=>{const mo=i+1;const has=series[mo]!==undefined;const v=has?series[mo]:0;const h=has?Math.max(4,Math.round(v/max*40)):0;
-  return `<div class="${mo===month?'cur':''} ${has?'':'none'}"><span>${has?f(v):''}</span><i style="height:${h}px"></i><span>${m}</span></div>`}).join('')}
+  el.innerHTML=MONTHS.map((m,i)=>{const mo=i+1;const has=series[mo]!==undefined;const v=has?series[mo]:0;const h=has?`max(4px, calc((100% - 30px) * ${(v/max).toFixed(3)}))`:'0px';
+  return `<div class="${mo===month?'cur':''} ${has?'':'none'}"><span>${has?f(v):''}</span><i style="height:${h}"></i><span>${m}</span></div>`}).join('')}
 
 /* ---------- agrégats du mois ---------- */
 function regionsFor(k){
@@ -219,7 +220,7 @@ function renderRegion(){
   const gr=geoR(r);
   if(gr){const [x0,y0,x1,y1]=bbox(gr.d);const pad=12;
     drawMap(document.getElementById('r-map'),pv.map(p=>{const g=geoP(p.n);return g?{geo:g,cls:'v'+(p.sev||2),key:p.n,label:p.n,value:p.nt?fk(p.a):fp(p.a,p.c),dark:(p.sev||2)>=3,title:`${p.n} — sévérité ${p.sev||'?'} — ${fk(p.a)} atteints`}:null}).filter(Boolean),
-      {view:[x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad],height:185,outline:false});}
+      {view:[x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad],height:210,outline:false});}
   table(document.getElementById('r-table'),cls,{head:'Cluster',click:kk=>{cluster=kk;setLens('cluster')}});
   timeline(document.getElementById('r-tl'),seriesOf(DATA.intAll.filter(x=>x.adm1_name===r)));
   indtable(document.getElementById('r-ind'),[]);
