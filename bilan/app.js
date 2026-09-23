@@ -87,11 +87,12 @@ function ftable(el,rows,total,click,sel){
 }
 function indtable(el,rows,{prio=true,cols}={}){
   el.style.setProperty('--icols',cols||(prio?'110px 1fr 60px 60px 48px 14px 60px 60px 48px':'1fr 64px 64px 52px'));
-  if(!rows.length){el.innerHTML=`<div class="na">Indicateurs non disponibles — les données ne sont pas encore chargées dans la base.</div>`;return}
+  if(!rows.length){el.innerHTML=`<div class="na">Indicateurs non disponibles pour ${LONG[month-1].toLowerCase()} — données non chargées dans la base.</div>`;return}
   const head=prio?`<div class="tr grp"><span></span><span></span><span class="gc" style="grid-column:span 3">Personnes ciblées</span><span></span><span class="gp" style="grid-column:span 3">Priorisées · sévérité 4</span></div>
   <div class="tr hd"><span>Cluster</span><span>Indicateur</span><span class="v">Cible</span><span class="v">Atteint</span><span class="pct">%</span><span></span><span class="v">Cible</span><span class="v">Atteint</span><span class="pct">%</span></div>`
   :`<div class="tr hd"><span>Indicateur</span><span class="v">Cible</span><span class="v">Réalisé</span><span class="pct">%</span></div>`;
-  el.innerHTML=head+rows.map(r=>`<div class="tr">${prio?`<span class="cl">${r.cl}</span>`:''}<span class="lab">${r.lab}</span><span class="v vc">${fk(r.c)}</span><span class="v va">${fk(r.a)}</span><span class="pct"><b>${fp(r.a,r.c)}</b></span>${prio?`<span></span><span class="v vp">${r.c4?fk(r.c4):'—'}</span><span class="v vq">${r.c4?fk(r.a4):'—'}</span><span class="pct">${r.c4?fp(r.a4,r.c4):''}</span>`:''}</div>`).join('');
+  const n=v=>v==null?'—':fk(v), p=(a,c)=>c?fp(a,c):'—';
+  el.innerHTML=head+rows.map(r=>`<div class="tr">${prio?`<span class="cl">${r.cl}</span>`:''}<span class="lab">${r.lab}</span><span class="v vc">${n(r.c)}</span><span class="v va">${n(r.a)}</span><span class="pct"><b>${p(r.a,r.c)}</b></span>${prio?`<span></span><span class="v vp">${r.c4!=null?n(r.c4):'—'}</span><span class="v vq">${r.a4!=null?n(r.a4):'—'}</span><span class="pct">${r.c4?fp(r.a4,r.c4):''}</span>`:''}</div>`).join('');
 }
 function hbars(el,items,max){el.innerHTML=items.length?items.map(([n,v])=>`<div class="r"><span class="n" title="${n}">${short(n)}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span class="v">${fm(v)}</span></div>`).join(''):`<div class="na">Non disponible</div>`}
 function sevcmp(el,{c4,a4,c3,a3}){
@@ -107,11 +108,24 @@ function sevstack(el){
     const s=t?[+r.atteint_sev2||0,+r.atteint_sev3||0,+r.atteint_sev4||0].map(v=>Math.round(v/t*100)):[0,0,0];return{...x,s}});
   el.innerHTML=items.map(x=>`<div class="${x.int?'int':''}"><div class="bar">${[4,3,2].map((lv,i)=>{const v=x.s[2-i];return v?`<i class="s${lv}" style="flex:${v}">${v>=9?v+'%':''}</i>`:''}).join('')}</div><span class="lb">${x.n}</span></div>`).join('');
 }
-function disagg(el){
-  el.innerHTML=`<div class="t">Personnes atteintes — désagrégation</div>
-  <div class="r"><span class="l">Statut</span><span class="st nd">non disponible</span></div>
-  <div class="r"><span class="l">Âge</span><span class="st nd">non disponible</span></div>
-  <div class="lg"><span>PDI · retournés · non-déplacés ; enfants · adultes · personnes âgées — données non encore chargées dans la base.</span></div>`;
+// désagrégation des atteints du cluster (national, mois choisi) : statut, âge, sexe — bloc à 0 = non rempli par le cluster
+const DCOL={k1:'#0074B7',k2:'#64BDEA',k3:'#C5DFEF',k4:'#8FB3CF',a1:'#338C46',a2:'#72BF44',a3:'#CEE3A0',x1:'#7B4A94',x2:'#C4A6D4'};
+function disagg(el,k){
+  const d=(cur().dis||[]).find(r=>r.cluster===k);
+  const mk=(vals,labels,cls,ok)=>{
+    if(!d||!ok)return{bar:'<span class="st nd">non disponible</span>',lg:''};
+    const v=vals.map(x=>+x||0),t=v.reduce((a,b)=>a+b,0)||1;
+    const keep=v.map((x,i)=>i).filter(i=>v[i]>0||i<3&&cls!=='k'||cls==='k'&&i<3);
+    return{bar:`<span class="st">${v.map((x,i)=>{const p=x/t*100;return p?`<i class="${cls}${i+1}" style="flex:${p}">${p>=12?Math.round(p)+'%':''}</i>`:''}).join('')}</span>`,
+      lg:`<div class="lg">${keep.map(i=>`<span><i style="background:${DCOL[cls+(i+1)]}"></i>${labels[i]} <b>${fk(v[i])}</b></span>`).join('')}</div>`}};
+  const fem=d?(+d.filles||0)+(+d.femmes||0)+(+d.agees_f||0):0, hom=d?(+d.garcons||0)+(+d.hommes||0)+(+d.agees_h||0):0;
+  const pg=mk(d&&[d.pdi,d.retournes,d.non_deplaces,d.refugies],['PDI','Retournés','Non-déplacés','Réfugiés'],'k',d&&d.statut_dispo);
+  const ag=mk(d&&[d.enfants,d.adultes,d.personnes_agees],['Enfants','Adultes','Pers. âgées'],'a',d&&d.age_dispo);
+  const sx=mk([fem,hom],['Femmes et filles','Hommes et garçons'],'x',d&&d.age_dispo);
+  el.innerHTML=`<div class="t">Personnes atteintes — désagrégation <small>national, fin ${LONG[month-1].toLowerCase()}</small></div>
+  <div class="r"><span class="l">Statut</span>${pg.bar}</div>${pg.lg}
+  <div class="r"><span class="l">Âge</span>${ag.bar}</div>${ag.lg}
+  <div class="r"><span class="l">Sexe</span>${sx.bar}</div>${sx.lg}`;
 }
 function drawMap(el,items,{view,height=300,onClick,selected,outline=true,big=false}={}){
   const vb=view||[0,0,GEO.W,GEO.H];
@@ -137,6 +151,25 @@ function timeline(el,series){const vals=Object.values(series);const max=Math.max
   return `<div class="${mo===month?'cur':''} ${has?'':'none'}"><span>${has?f(v):''}</span><i style="height:${h}"></i><span>${m}</span></div>`}).join('')}
 
 /* ---------- agrégats du mois ---------- */
+// indicateurs clés : national par cluster ; région = somme des provinces (priorisées = provinces de sévérité 4)
+const numOrNull=v=>v==null?null:+v;
+function indNational(k){
+  return (cur().ind||[]).filter(r=>r.niveau==='national'&&r.cluster===k).sort((a,b)=>a.ordre-b.ordre)
+    .map(r=>({lab:r.libelle_fr,c:numOrNull(r.cible),a:numOrNull(r.realise)}));
+}
+function indRegion(reg){
+  const sevOf={};cur().prov.filter(x=>x.cluster===INT&&x.adm1_name===reg).forEach(x=>sevOf[norm(x.adm2_name)]=+x.severity);
+  const by={};
+  (cur().ind||[]).filter(r=>r.niveau==='province'&&norm(r.region||'')===norm(reg)).forEach(r=>{
+    const o=by[r.indicator_code]=by[r.indicator_code]||{k:r.cluster,ordre:r.ordre,lab:r.libelle_fr,c:null,a:null,c4:null,a4:null};
+    const add=(f,v)=>{if(v!=null)o[f]=(o[f]||0)+ +v};
+    add('c',r.cible);add('a',r.realise);
+    if(sevOf[norm(r.nom)]===4){add('c4',r.cible);add('a4',r.realise)}
+  });
+  const has4=Object.values(sevOf).includes(4);
+  return CL.flatMap(c=>Object.values(by).filter(o=>o.k===c.k).sort((a,b)=>a.ordre-b.ordre)
+    .map((o,i)=>({...o,cl:i?'':c.n,c4:has4?o.c4:null,a4:has4?o.a4:null})));
+}
 function regionsFor(k){
   const by={};provRows(k).forEach(r=>{(by[r.adm1_name]=by[r.adm1_name]||[]).push(r)});
   return Object.entries(by).map(([n,rows])=>({n,k:n,...agg(rows)})).sort((a,b)=>b.c-a.c||b.a-a.a);
@@ -196,14 +229,15 @@ function renderCluster(){
     {cls:'c',v:f(T.c),l:'Ciblées'},{cls:'a',v:fk(T.a),l:'Atteintes'},{cls:'a',v:fp(T.a,T.c),l:'% atteint'},
     {cls:'p',v:f(T.c4),l:'Priorisées (sév. 4)'},{cls:'p2',v:fk(T.a4),l:'Atteintes'},{cls:'p2',v:fp(T.a4,T.c4),l:'% atteint'},
     {cls:'r',v:F?fm(F.req(code)):'—',l:'Requis (USD)'},{cls:'f',v:F?fm(F.fin(code)):'—',l:'Reçus (FTS)'},{cls:'f',v:F?fp(F.fin(code),F.req(code)):'—',l:'% couvert'}]);
-  disagg(document.getElementById('c-dis'));
+  disagg(document.getElementById('c-dis'),c.k);
   const regs=regionsFor(c.k);
   regionMap(document.getElementById('c-map'),regs,n=>{region=n;setLens('region')},232);
   table(document.getElementById('c-table'),regs.filter(r=>r.c>1000||r.a>500).slice(0,12),{head:'Région (12 premières)',click:n=>{region=n;setLens('region')}});
   sevcmp(document.getElementById('c-sev'),{c4:T.c4,a4:T.a4,c3:T.c-T.c4,a3:T.a-T.a4});
   const d=F?orgsFor(code,'bailleur',5):[],r=F?orgsFor(code,'destinataire',5):[];
   hbars(document.getElementById('c-donors'),d,d[0]?d[0][1]:1);hbars(document.getElementById('c-recip'),r,r[0]?r[0][1]:1);
-  indtable(document.getElementById('c-ind'),[],{prio:false});
+  indtable(document.getElementById('c-ind'),indNational(c.k),{prio:false});
+  document.getElementById('c-ind-date').textContent=`national, fin ${LONG[month-1].toLowerCase()}`;
   timeline(document.getElementById('c-tl'),seriesOf(DATA.summary.filter(r=>r.cluster===c.k)));
 }
 function renderRegion(){
@@ -223,17 +257,20 @@ function renderRegion(){
       {view:[x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad],height:210,outline:false});}
   table(document.getElementById('r-table'),cls,{head:'Cluster',click:kk=>{cluster=kk;setLens('cluster')}});
   timeline(document.getElementById('r-tl'),seriesOf(DATA.intAll.filter(x=>x.adm1_name===r)));
-  indtable(document.getElementById('r-ind'),[]);
+  indtable(document.getElementById('r-ind'),indRegion(r));
+  document.getElementById('r-ind-date').textContent=`fin ${LONG[month-1].toLowerCase()} · cible et réalisé = somme des provinces de la région ; « — » : cible provinciale non fournie par le cluster`;
 }
 
 /* ---------- chargement ---------- */
 async function loadMonth(m){
   if(DATA.byMonth[m])return;
-  const [prov,fin,orgs]=await Promise.all([
+  const [prov,fin,orgs,ind,dis]=await Promise.all([
     sb(`bilan_reach_province?mois=eq.${m}&select=cluster,adm1_name,adm2_name,severity,cible,atteint,cible_sev4,atteint_sev4&limit=2000`),
     sb(`bilan_fin_cluster?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=cluster_code,categorie,requis_usd,recu_usd,as_of_date`),
-    sb(`bilan_fin_orgs?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=scope,role,organisation,montant_usd&limit=2000`)]);
-  DATA.byMonth[m]={prov,fin,orgs};
+    sb(`bilan_fin_orgs?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=scope,role,organisation,montant_usd&limit=2000`),
+    sb(`bilan_indicators?mois=eq.${m}&niveau=in.(national,province)&select=cluster,ordre,indicator_code,libelle_fr,niveau,nom,region,cible,realise&limit=5000`),
+    sb(`bilan_disagg?mois=eq.${m}&niveau=eq.national`)]);
+  DATA.byMonth[m]={prov,fin,orgs,ind,dis};
 }
 async function boot(){
   const st=document.getElementById('status');

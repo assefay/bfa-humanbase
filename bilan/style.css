@@ -113,6 +113,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
 .dis .st{display:flex;height:15px;border-radius:2px;overflow:hidden;background:var(--track)}
 .dis .st i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:9px;color:#fff;overflow:hidden;white-space:nowrap}
 .dis .st i.k1{background:#0074B7} .dis .st i.k2{background:#64BDEA;color:var(--ink)} .dis .st i.k3{background:#C5DFEF;color:var(--ink)}
+.dis .st i.k4{background:#8FB3CF;color:var(--ink)} .dis .st i.x1{background:#7B4A94} .dis .st i.x2{background:#C4A6D4;color:var(--ink)}
 .dis .st i.a1{background:#338C46} .dis .st i.a2{background:#72BF44} .dis .st i.a3{background:#CEE3A0;color:var(--ink)}
 .dis .st.nd{align-items:center;justify-content:center;color:var(--ink3);font-size:9.5px}
 .dis .lg{display:flex;gap:10px;font-size:9px;color:var(--ink2);flex-wrap:wrap;padding-left:52px}

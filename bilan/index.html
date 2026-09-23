@@ -21,7 +21,7 @@
   <label class="pick" id="pick-region" hidden>Région <select id="sel-region"></select></label>
   <span class="status" id="status"></span>
   <button class="print" id="btn-print" type="button">Imprimer cette vue</button>
-  <button class="print" id="btn-print-all" type="button">Tout imprimer (5 p.)</button>
+  <button class="print" id="btn-print-all" type="button">Tout imprimer (6 p.)</button>
 </div>
 <p class="note"><b>Suivi de la réponse humanitaire 2026.</b> Chaque feuille est une page A4 paysage ; ce que vous voyez est ce qui s'imprime. Les données proviennent de la base HumanBase (clusters, HPC 2026, FTS) et suivent le mois sélectionné. Une donnée absente s'affiche « non disponible ».</p>
 
@@ -125,7 +125,7 @@
         <div class="tbl" id="c-table" style="--rh:15px"></div>
       </div>
       <div><div class="sec">Atteints selon la sévérité</div><div class="sevcmp" id="c-sev"></div></div>
-      <div><div class="sec">Indicateurs clés du cluster <small>national, au 30 juin</small></div><div class="ind" id="c-ind"></div></div>
+      <div><div class="sec">Indicateurs clés du cluster <small id="c-ind-date"></small></div><div class="ind" id="c-ind"></div></div>
     </div>
   </section>
 </article>
@@ -165,7 +165,7 @@
 <!-- ===== RÉGION 2/2 : INDICATEURS ===== -->
 <article class="paper" data-lens="region" data-title="Perspective régionale · indicateurs">
   <section class="view" id="v-region2" style="grid-template-rows:auto 1fr;gap:10px">
-    <div class="sec">Réalisation par indicateur clé et par cluster — <span id="r-name-3"></span> <small>structure du Bilan régional</small></div>
+    <div class="sec">Réalisation par indicateur clé et par cluster — <span id="r-name-3"></span> <small id="r-ind-date"></small></div>
     <div class="ind" id="r-ind"></div>
   </section>
 </article>
