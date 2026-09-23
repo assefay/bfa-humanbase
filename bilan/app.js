@@ -331,6 +331,9 @@ document.querySelectorAll('.lens button').forEach(b=>b.addEventListener('click',
 document.getElementById('sel-cluster').innerHTML=CL.map(c=>`<option value="${c.k}">${c.n}</option>`).join('');
 document.getElementById('sel-cluster').addEventListener('change',e=>{cluster=e.target.value;render()});
 document.getElementById('sel-region').addEventListener('change',e=>{region=e.target.value;render()});
+// impression : la dernière feuille visible ne force pas de saut de page (sinon page blanche en fin de document)
+window.addEventListener('beforeprint',()=>{const ps=[...document.querySelectorAll('.paper')];ps.forEach(p=>p.classList.remove('last'));
+  const vis=ps.filter(p=>getComputedStyle(p).display!=='none'||document.body.classList.contains('all'));if(vis.length)vis[vis.length-1].classList.add('last')});
 document.getElementById('btn-print').addEventListener('click',()=>window.print());
 document.getElementById('btn-print-all').addEventListener('click',()=>{renderGlobal();renderFin();renderCluster();renderRegion();document.body.classList.add('all');setTimeout(()=>{window.print();document.body.classList.remove('all')},50)});
 

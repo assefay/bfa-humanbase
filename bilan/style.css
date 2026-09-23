@@ -193,9 +193,12 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{background:#fff}
   .chrome,.note{display:none!important}
-  .stage{padding:0;display:block;overflow:visible}
+  html,body{height:auto}
+  .stage{padding:0;display:block;overflow:visible;height:auto!important}
   .sheets{transform:none!important;gap:0}
-  .paper{width:297mm;height:210mm;box-shadow:none;page-break-after:always;break-after:page}
+  /* 209mm + overflow:hidden : une feuille ne déborde jamais sur une 2e page ; pas de saut après la dernière feuille visible */
+  .paper{width:297mm;height:209mm;overflow:hidden;box-shadow:none;page-break-after:always;break-after:page}
+  .paper.last{page-break-after:auto;break-after:auto}
   body.all .paper{display:flex}
   .map path,.tbl button.n{cursor:default}
 }
