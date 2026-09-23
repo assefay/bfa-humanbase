@@ -9,6 +9,10 @@ async function sb(path){
   if(!r.ok) throw new Error(`${path.split('?')[0]} → HTTP ${r.status}`);
   return r.json();
 }
+// l'API renvoie au plus 1 000 lignes par requête : lecture par pages
+async function sbAll(path){
+  const out=[];for(let off=0;;off+=1000){const p=await sb(`${path}${path.includes('?')?'&':'?'}limit=1000&offset=${off}`);out.push(...p);if(p.length<1000)return out}
+}
 
 /* ---------- référentiels ---------- */
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
@@ -265,10 +269,10 @@ function renderRegion(){
 async function loadMonth(m){
   if(DATA.byMonth[m])return;
   const [prov,fin,orgs,ind,dis]=await Promise.all([
-    sb(`bilan_reach_province?mois=eq.${m}&select=cluster,adm1_name,adm2_name,severity,cible,atteint,cible_sev4,atteint_sev4&limit=2000`),
+    sbAll(`bilan_reach_province?mois=eq.${m}&select=cluster,adm1_name,adm2_name,severity,cible,atteint,cible_sev4,atteint_sev4`),
     sb(`bilan_fin_cluster?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=cluster_code,categorie,requis_usd,recu_usd,as_of_date`),
-    sb(`bilan_fin_orgs?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=scope,role,organisation,montant_usd&limit=2000`),
-    sb(`bilan_indicators?mois=eq.${m}&niveau=in.(national,province)&select=cluster,ordre,indicator_code,libelle_fr,niveau,nom,region,cible,realise&limit=5000`),
+    sbAll(`bilan_fin_orgs?annee=eq.${ANNEE}&mois_bilan=eq.${m}&select=scope,role,organisation,montant_usd`),
+    sbAll(`bilan_indicators?mois=eq.${m}&niveau=in.(national,province)&select=cluster,ordre,indicator_code,libelle_fr,niveau,nom,region,cible,realise&order=indicator_code,niveau,pcode`),
     sb(`bilan_disagg?mois=eq.${m}&niveau=eq.national`)]);
   DATA.byMonth[m]={prov,fin,orgs,ind,dis};
 }
@@ -278,7 +282,7 @@ async function boot(){
     st.textContent='Chargement…';
     const [summary,intAll,snaps]=await Promise.all([
       sb('bilan_reach_month?select=mois,cluster,cible,atteint,cible_sev4,atteint_sev4,atteint_sev2,atteint_sev3'),
-      sb(`bilan_reach_province?cluster=eq.${INT}&select=mois,adm1_name,adm2_name,atteint&limit=2000`),
+      sbAll(`bilan_reach_province?cluster=eq.${INT}&select=mois,adm1_name,adm2_name,atteint`),
       sb(`fts_snapshots?annee=eq.${ANNEE}&select=mois_bilan,as_of_date,recu_musd`)]);
     Object.assign(DATA,{summary,intAll,snaps});
     const avail=monthsAvail(); month=avail[avail.length-1];
