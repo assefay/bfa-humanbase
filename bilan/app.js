@@ -92,8 +92,8 @@ function ftable(el,rows,total,click,sel){
 function indtable(el,rows,{prio=true,cols}={}){
   el.style.setProperty('--icols',cols||(prio?'110px 1fr 60px 60px 48px 14px 60px 60px 48px':'1fr 64px 64px 52px'));
   if(!rows.length){el.innerHTML=`<div class="na">Indicateurs non disponibles pour ${LONG[month-1].toLowerCase()} — données non chargées dans la base.</div>`;return}
-  const head=prio?`<div class="tr grp"><span></span><span></span><span class="gc" style="grid-column:span 3">Personnes ciblées</span><span></span><span class="gp" style="grid-column:span 3">Priorisées · sévérité 4</span></div>
-  <div class="tr hd"><span>Cluster</span><span>Indicateur</span><span class="v">Cible</span><span class="v">Atteint</span><span class="pct">%</span><span></span><span class="v">Cible</span><span class="v">Atteint</span><span class="pct">%</span></div>`
+  const head=prio?`<div class="tr grp"><span></span><span></span><span class="gc" style="grid-column:span 3">Toute la région</span><span></span><span class="gp" style="grid-column:span 3">Provinces priorisées · sévérité 4</span></div>
+  <div class="tr hd"><span>Cluster</span><span>Indicateur</span><span class="v">Cible</span><span class="v">Réalisé</span><span class="pct">%</span><span></span><span class="v">Cible</span><span class="v">Réalisé</span><span class="pct">%</span></div>`
   :`<div class="tr hd"><span>Indicateur</span><span class="v">Cible</span><span class="v">Réalisé</span><span class="pct">%</span></div>`;
   const n=v=>v==null?'—':fk(v), p=(a,c)=>c?fp(a,c):'—';
   el.innerHTML=head+rows.map(r=>`<div class="tr">${prio?`<span class="cl">${r.cl}</span>`:''}<span class="lab">${r.lab}</span><span class="v vc">${n(r.c)}</span><span class="v va">${n(r.a)}</span><span class="pct"><b>${p(r.a,r.c)}</b></span>${prio?`<span></span><span class="v vp">${r.c4!=null?n(r.c4):'—'}</span><span class="v vq">${r.a4!=null?n(r.a4):'—'}</span><span class="pct">${r.c4?fp(r.a4,r.c4):''}</span>`:''}</div>`).join('');
