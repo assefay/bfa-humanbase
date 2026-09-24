@@ -52,33 +52,37 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .na{border:1px dashed var(--line);border-radius:4px;padding:10px 12px;color:var(--ink3);font-size:10.5px;text-align:center}
 
 /* KPI : grands chiffres période courante / précédente */
-.kbox{display:grid;gap:6px;border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+.kbox{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;border:1px solid var(--line);border-radius:4px;padding:8px 10px}
 .kpi{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:center}
 .kpi svg{width:24px;height:24px;grid-row:span 2}
-.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.05;color:var(--cur)}
+.kpi .v{font-size:20px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.05;color:var(--cur)}
 .kpi.prev .v{color:var(--prev)}
 .kpi.n .v{color:var(--ink)}
 .kpi .l{font-size:9.5px;color:var(--ink2);line-height:1.2}
 .kpi .l b{font-weight:500;color:var(--ink)}
-.kmini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.kmini{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .kmini div{border-left:2px solid var(--ocha);padding:2px 7px}
 .kmini .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
-.kmini .v small{font-size:9px;font-weight:400;color:var(--ink2);margin-left:3px}
+.kmini .v small{font-size:8.5px;font-weight:400;color:var(--ink2);display:block;line-height:1.1}
 .kmini .l{font-size:8.5px;color:var(--ink2)}
 .kmini .v .up{color:var(--flow)} .kmini .v .dn{color:#338C46}
 
-/* barres appariées (mois, régions) : courante foncée, précédente claire */
-.pb{display:grid;gap:3px;font-size:9.5px;font-variant-numeric:tabular-nums}
-.pb .r{display:grid;grid-template-columns:44px 1fr;gap:6px;align-items:center}
+/* barres appariées (mois, régions) : une ligne = un mois ou une région ; deux barres fines (courante foncée, précédente claire) ;
+   valeurs en colonnes à droite. --rh = hauteur de ligne, réduite par fitCols() si la colonne déborde. */
+.pb{display:grid;gap:2px;font-size:9.5px;font-variant-numeric:tabular-nums}
+.pb .r{display:grid;grid-template-columns:50px 1fr 38px 38px;gap:6px;align-items:center;height:var(--rh,15px)}
+.pb.one .r{grid-template-columns:50px 1fr 42px}
+.pb .r.hd{height:auto;font-family:var(--cond);font-size:9px;color:var(--ink2);border-bottom:1px solid var(--line);padding-bottom:2px}
+.pb .r.hd i{display:inline-block;width:8px;height:8px;border-radius:1px;margin-right:3px;vertical-align:-1px;background:var(--cur)}
+.pb .r.hd .p i{background:var(--prev)}
 .pb .l{color:var(--ink2);font-family:var(--cond);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pb .bars{display:grid;gap:1px}
-.pb .b{position:relative;height:8px}
-.pb .b i{position:absolute;left:0;top:0;bottom:0;width:calc((100% - 40px) * var(--w,0));background:var(--cur);border-radius:1px;min-width:1px}
+.pb .bars{display:flex;flex-direction:column;justify-content:center;gap:1px;height:100%}
+.pb .b{height:calc((var(--rh,15px) - 4px) / 2);min-height:3px;position:relative}
+.pb.one .b{height:calc(var(--rh,15px) - 5px)}
+.pb .b i{position:absolute;left:0;top:0;bottom:0;width:calc(100% * var(--w,0));min-width:1px;background:var(--cur);border-radius:1px}
 .pb .b.p i{background:var(--prev)}
-.pb .b.z i{background:var(--track);width:1px}
-.pb .b span{position:absolute;left:calc((100% - 40px) * var(--w,0) + 4px);top:-1px;line-height:10px;font-size:8.5px;color:var(--ink);white-space:nowrap}
-.pb .b.p span{color:var(--ink2)}
-.pb.one .b{height:11px} .pb.one .b span{line-height:12px;font-size:9px}
+.pb .n{text-align:right;white-space:nowrap}
+.pb .n.c{color:var(--ink);font-weight:500} .pb .n.p{color:var(--ink2)}
 
 /* barres horizontales (top communes) */
 .hb{display:grid;gap:4px;font-size:10px;font-variant-numeric:tabular-nums}
@@ -135,7 +139,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 
 /* ---- sheet layouts ---- */
 #v-nat,.v-reg{grid-template-columns:292px 1fr;gap:10px 22px}
-#v-nat .col,.v-reg .col{display:flex;flex-direction:column;gap:10px;min-height:0}
+#v-nat .col,.v-reg .col{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:hidden}
 #v-al{grid-template-rows:auto 1fr;gap:10px}
 
 /* ---------- print ---------- */

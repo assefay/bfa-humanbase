@@ -39,6 +39,7 @@ const fk=v=>v>=1e6?(v/1e6).toFixed(1).replace('.',',')+'M':v>=10000?Math.round(v
 const sum=(rows,k)=>rows.reduce((s,r)=>s+(+r[k]||0),0);
 const shiftY=(d,n)=>{const [y,m,dd]=d.split('-').map(Number);const x=new Date(Date.UTC(y+n,m-1,dd));if(x.getUTCMonth()!==m-1)x.setUTCDate(0);return iso(x)};
 const dateFr=(d,withYear=true)=>{const [y,m,dd]=d.split('-').map(Number);return `${dd===1?'1er':dd} ${LONG[m-1]}${withYear?' '+y:''}`};
+const periodShort=(du,au)=>{const d=x=>x.split('-').reverse().join('/');return du.slice(0,4)===au.slice(0,4)?`${d(du).slice(0,5)} – ${d(au)}`:`${d(du)} – ${d(au)}`};
 const periodLabel=(du,au)=>{const sameY=du.slice(0,4)===au.slice(0,4);return `${dateFr(du,!sameY)} – ${dateFr(au)}`};
 const inRange=(r,du,au)=>r.choc_date>=du&&r.choc_date<=au;
 const regOf=r=>r.org_adm1_pcode||r.arr_adm1_pcode; // région du choc ; à défaut (4 alertes 2024 sans origine), région d'accueil
@@ -56,18 +57,23 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const ICON_IDP=`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="4" r="2.6" fill="currentColor"/><path d="M8 8.5h4l2 5-1.5 1-1.8-3-.7 4 3 3.2V22h-2.2v-3l-2.6-2.4L7 22H4.8l2.4-7 .5-4.2-2 2.2L4 12l3-3.5z" fill="currentColor"/><path d="M15.5 6.5h5m0 0-2-2m2 2-2 2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`;
 const ICON_PIN=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg>`;
 function kbox(el,items){el.innerHTML=items.map(i=>`<div class="kpi ${i.cls||''}" style="color:${i.color||'var(--cur)'}">${i.icon||ICON_IDP}<div class="v">${i.v}</div><div class="l">${i.l}</div></div>`).join('')}
-function kmini(el,items){el.innerHTML=items.map(i=>`<div><div class="v">${i.v}${i.d!==undefined?`<small class="${i.d>0?'up':i.d<0?'dn':''}">${i.d>0?'+':''}${f(i.d)}</small>`:''}</div><div class="l">${i.l}</div></div>`).join('')}
+function kmini(el,items){el.innerHTML=items.map(i=>`<div><div class="v">${i.v}${i.d!==undefined?`<small class="d ${i.d>0?'up':i.d<0?'dn':''}">${i.d>0?'+':''}${f(i.d)}</small>`:''}</div><div class="l">${i.l}</div></div>`).join('')}
 // barres appariées : rows = [{l, v, p}] ; p = valeur période précédente (undefined si pas de comparaison)
-function pbars(el,rows,cmp){
+// barres appariées : une ligne par mois / région ; les deux valeurs sont alignées en colonnes à droite
+// (courante | précédente) pour que la hauteur ne dépende que du nombre de lignes. En-tête = légende.
+function pbars(el,rows,cmp,hdr){
   const max=Math.max(1,...rows.flatMap(r=>[r.v,cmp?r.p||0:0]));
   el.classList.toggle('one',!cmp);
-  el.innerHTML=rows.length?rows.map(r=>`<div class="r"><span class="l" title="${esc(r.l)}">${esc(r.l)}</span><span class="bars">
-    <span class="b ${r.v?'':'z'}" style="--w:${(r.v/max).toFixed(3)}"><i></i><span>${r.v?fk(r.v):'0'}</span></span>
-    ${cmp?`<span class="b p ${r.p?'':'z'}" style="--w:${((r.p||0)/max).toFixed(3)}"><i></i><span>${r.p?fk(r.p):'0'}</span></span>`:''}</span></div>`).join('')
-  :`<div class="na">Aucun déplacement enregistré sur la période</div>`;
+  if(!rows.length){el.innerHTML=`<div class="na">Aucun déplacement enregistré sur la période</div>`;return}
+  const H=hdr||{};
+  el.innerHTML=`<div class="r hd"><span></span><span></span><span class="n c"><i></i>${H.c||''}</span>${cmp?`<span class="n p"><i></i>${H.p||''}</span>`:''}</div>`+
+   rows.map(r=>`<div class="r"><span class="l" title="${esc(r.l)}">${esc(r.l)}</span><span class="bars">
+    <span class="b" style="--w:${(r.v/max).toFixed(3)}"><i></i></span>${cmp?`<span class="b p" style="--w:${((r.p||0)/max).toFixed(3)}"><i></i></span>`:''}</span>
+    <span class="n c">${r.v?fk(r.v):'–'}</span>${cmp?`<span class="n p">${r.p?fk(r.p):'–'}</span>`:''}</div>`).join('');
 }
 function hbars(el,items){const max=Math.max(1,...items.map(i=>i.v));
   el.innerHTML=items.length?items.map(i=>`<div class="r"><span class="n" title="${esc(i.l)}">${esc(i.l)}</span><span class="b" style="--w:${(i.v/max).toFixed(3)}"><i></i><span>${fk(i.v)}</span></span></div>`).join(''):`<div class="na">Aucune commune d'accueil</div>`}
+const colHdr=()=>{const [pdu,pau]=prevRange();const y1=S.du.slice(0,4),y2=S.au.slice(0,4);return y1===y2?{c:y1,p:String(+y1-1)}:{c:'Période',p:'N-1'}};
 const keyCmp=(du,au,cmp)=>`<span><i style="background:var(--cur)"></i>${periodLabel(du,au)}</span>${cmp?`<span><i style="background:var(--prev)"></i>${periodLabel(...prevRange())}</span>`:''}`;
 const LEG=`<span><i style="background:var(--none)"></i>Aucun</span><span><i style="background:var(--b1)"></i>1 – 5 000</span><span><i style="background:var(--b2)"></i>5 001 – 10 000</span><span><i style="background:var(--b3)"></i>10 001 et plus</span>`;
 const ARROW=(id,k)=>`<defs><marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--flow)"/></marker></defs>`;
@@ -126,8 +132,8 @@ function renderNational(){
   const cur=rowsIn(S.du,S.au), [pdu,pau]=prevRange(), prev=S.cmp?rowsIn(pdu,pau):[];
   const P=sum(cur,'personnes'), PP=sum(prev,'personnes');
   kbox(document.getElementById('n-kpis'),[
-    {v:f(P),l:`Personnes déplacées internes<br><b>${periodLabel(S.du,S.au)}</b>`},
-    ...(S.cmp?[{v:f(PP),l:`Personnes déplacées internes<br><b>${periodLabel(pdu,pau)}</b>`,cls:'prev',color:'var(--prev)'}]:[])]);
+    {v:f(P),l:`Personnes déplacées<br><b>${periodShort(S.du,S.au)}</b>`},
+    ...(S.cmp?[{v:f(PP),l:`Même période ${colHdr().p==='N-1'?'N-1':colHdr().p}<br><b>${periodShort(pdu,pau)}</b>`,cls:'prev',color:'var(--prev)'}]:[])]);
   const communes=new Set(cur.filter(r=>r.arr_pcode).map(r=>r.arr_pcode)), regions=new Set(cur.map(regOf).filter(Boolean));
   kmini(document.getElementById('n-mini'),[
     {v:f(sum(cur,'menages')),l:'Ménages',d:S.cmp?sum(cur,'menages')-sum(prev,'menages'):undefined},
@@ -136,12 +142,11 @@ function renderNational(){
   // mensuel
   const ml=monthsList(S.du,S.au), oneYear=ml.every(x=>x.y===ml[0].y);
   const cm=byKey(cur,r=>`${r.annee}-${r.mois}`), pm=byKey(prev,r=>`${r.annee+1}-${r.mois}`);
-  pbars(document.getElementById('n-months'),ml.map(x=>({l:MONTHS[x.m-1]+(oneYear?'':' '+String(x.y).slice(2)),v:cm[`${x.y}-${x.m}`]||0,p:pm[`${x.y}-${x.m}`]||0})),S.cmp);
+  pbars(document.getElementById('n-months'),ml.map(x=>({l:MONTHS[x.m-1]+(oneYear?'':' '+String(x.y).slice(2)),v:cm[`${x.y}-${x.m}`]||0,p:pm[`${x.y}-${x.m}`]||0})),S.cmp,colHdr());
   // régional
   const cr=byKey(cur,regOf), pr=byKey(prev,regOf);
   const regs=[...new Set([...Object.keys(cr),...Object.keys(pr)])].map(p=>({l:RNAME(p),v:cr[p]||0,p:pr[p]||0})).sort((a,b)=>b.v-a.v||b.p-a.p);
-  pbars(document.getElementById('n-regions'),regs,S.cmp);
-  document.getElementById('n-key').innerHTML=keyCmp(S.du,S.au,S.cmp);
+  pbars(document.getElementById('n-regions'),regs,S.cmp,colHdr());
   // carte
   const bc=byKey(cur,r=>r.arr_pcode);
   const off=new Set(GEO.R.map(r=>r.p).filter(p=>!cr[p]));
@@ -156,17 +161,17 @@ function renderRegion(el,reg){
   const cur=rowsIn(S.du,S.au,reg), [pdu,pau]=prevRange(), prev=S.cmp?rowsIn(pdu,pau,reg):[];
   const org=new Set(cur.map(r=>r.org_pcode).filter(Boolean)), arr=new Set(cur.map(r=>r.arr_pcode).filter(Boolean));
   kbox(q('kpis'),[
-    {v:f(sum(cur,'personnes')),l:`Personnes déplacées internes<br><b>${periodLabel(S.du,S.au)}</b>`},
-    ...(S.cmp?[{v:f(sum(prev,'personnes')),l:`Personnes déplacées internes<br><b>${periodLabel(pdu,pau)}</b>`,cls:'prev',color:'var(--prev)'}]:[]),
-    {v:f(sum(cur,'menages')),l:`Ménages · <b>${f(nAlertes(cur))}</b> alerte${nAlertes(cur)>1?'s':''}`,cls:'n',icon:ICON_IDP,color:'var(--ink)'},
-    {v:String(org.size).padStart(2,'0'),l:"Communes d'origine",icon:ICON_PIN,color:'var(--ocha)',cls:'n'},
-    {v:String(arr.size).padStart(2,'0'),l:"Communes d'accueil",icon:ICON_PIN,color:'var(--ocha)',cls:'n'}]);
+    {v:f(sum(cur,'personnes')),l:`Personnes déplacées<br><b>${periodShort(S.du,S.au)}</b>`},
+    ...(S.cmp?[{v:f(sum(prev,'personnes')),l:`Même période ${colHdr().p}<br><b>${periodShort(pdu,pau)}</b>`,cls:'prev',color:'var(--prev)'}]:[])]);
+  kmini(q('mini'),[
+    {v:f(sum(cur,'menages')),l:'Ménages',d:S.cmp?sum(cur,'menages')-sum(prev,'menages'):undefined},
+    {v:f(nAlertes(cur)),l:'Alertes',d:S.cmp?nAlertes(cur)-nAlertes(prev):undefined},
+    {v:f(org.size),l:"Communes d'origine"},{v:f(arr.size),l:"Communes d'accueil"}]);
   const ml=monthsList(S.du,S.au), oneYear=ml.every(x=>x.y===ml[0].y);
   const cm=byKey(cur,r=>`${r.annee}-${r.mois}`), pm=byKey(prev,r=>`${r.annee+1}-${r.mois}`);
-  pbars(q('months'),ml.map(x=>({l:MONTHS[x.m-1]+(oneYear?'':' '+String(x.y).slice(2)),v:cm[`${x.y}-${x.m}`]||0,p:pm[`${x.y}-${x.m}`]||0})),S.cmp);
+  pbars(q('months'),ml.map(x=>({l:MONTHS[x.m-1]+(oneYear?'':' '+String(x.y).slice(2)),v:cm[`${x.y}-${x.m}`]||0,p:pm[`${x.y}-${x.m}`]||0})),S.cmp,colHdr());
   const bc=byKey(cur,r=>r.arr_pcode);
   hbars(q('top'),Object.entries(bc).map(([p,v])=>({l:(CBY[p]||{}).n||p,v})).sort((a,b)=>b.v-a.v).slice(0,5));
-  q('key').innerHTML=keyCmp(S.du,S.au,S.cmp);
   // flux origine → accueil (agrégés par couple)
   const fm={};cur.forEach(r=>{if(!r.arr_pcode)return;const k=(r.org_pcode||'?')+'>'+r.arr_pcode;fm[k]=fm[k]||{org:r.org_pcode,arr:r.arr_pcode,v:0};fm[k].v+=+r.personnes||0});
   mapRegion(q('map'),reg,bc,Object.values(fm),MAPH_REG);
@@ -191,7 +196,6 @@ function setLens(l){S.lens=l;document.querySelectorAll('.lens button').forEach(b
 function applyPreset(p){S.preset=p;const y=today.getFullYear(),m=today.getMonth();
   if(p==='annee'){S.du=`${y}-01-01`;S.au=iso(today)}
   else if(p==='mois'){S.du=iso(new Date(Date.UTC(y,m,1)));S.au=iso(today)}
-  else if(p==='12m'){const d=new Date(Date.UTC(y-1,m,today.getDate()+1));S.du=iso(d);S.au=iso(today)}
   render()}
 function heads(){
   const asof=ASOF?` (données au ${dateFr(ASOF)})`:'';
@@ -223,7 +227,7 @@ function render(){
   fit();
 }
 function presetOf(du,au){const y=today.getFullYear(),m=today.getMonth();if(au!==iso(today))return 'perso';
-  if(du===`${y}-01-01`)return 'annee';if(du===iso(new Date(Date.UTC(y,m,1))))return 'mois';if(du===iso(new Date(Date.UTC(y-1,m,today.getDate()+1))))return '12m';return 'perso'}
+  if(du===`${y}-01-01`)return 'annee';if(du===iso(new Date(Date.UTC(y,m,1))))return 'mois';return 'perso'}
 function readHash(){const h=new URLSearchParams(location.hash.slice(1));
   if(h.get('du')&&h.get('au')){S.du=h.get('du');S.au=h.get('au');S.preset=presetOf(S.du,S.au)}
   if(h.has('cmp'))S.cmp=h.get('cmp')==='1';if(h.get('vue'))S.lens=h.get('vue');if(h.get('region'))S.region=h.get('region');
@@ -259,7 +263,11 @@ document.getElementById('btn-print-all').addEventListener('click',()=>{
 });
 // après impression : retirer les feuilles régionales clonées et revenir à la vue courante
 window.addEventListener('afterprint',()=>{if(!document.body.classList.contains('all'))return;document.body.classList.remove('all');document.querySelectorAll('.paper.clone').forEach(c=>c.remove());document.getElementById('paper-region').classList.remove('skip');document.getElementById('all-regions').hidden=true;render()});
-function fit(){const st=document.getElementById('stage'),sh=document.getElementById('sheets');const w=st.clientWidth-32;const s=Math.min(1,w/1123);sh.style.transform=`scale(${s})`;
+// la colonne de gauche doit tenir dans la feuille : on réduit la hauteur des lignes des graphiques si besoin
+function fitCols(){document.querySelectorAll('.paper .col').forEach(col=>{
+  if(!col.offsetParent)return;col.style.setProperty('--rh','15px');
+  for(let h=15;h>=9&&col.scrollHeight>col.clientHeight+1;h--)col.style.setProperty('--rh',h+'px')})}
+function fit(){fitCols();const st=document.getElementById('stage'),sh=document.getElementById('sheets');const w=st.clientWidth-32;const s=Math.min(1,w/1123);sh.style.transform=`scale(${s})`;
   const on=[...document.querySelectorAll('.paper.on')];const h=on.reduce((a,p)=>a+p.offsetHeight,0)+18*(on.length-1);st.style.height=(h*s+44)+'px'}
 addEventListener('resize',fit);
 

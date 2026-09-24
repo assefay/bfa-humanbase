@@ -8,10 +8,12 @@ Même structure et mêmes conventions que `../bilan/` (feuilles A4 paysage = pag
 - 3 vues : **National** (1 feuille), **Région** (1 feuille par région, sélecteur), **Alertes** (liste, feuille haute).
   « Imprimer cette vue » = la vue affichée ; « Tout imprimer » = national + une feuille par région ayant enregistré
   des déplacements sur la période (ordre décroissant) + alertes.
-- Filtres : période (préréglages Année en cours · Mois en cours · 12 derniers mois · Personnalisé, dates du/au),
+- Filtres : période (préréglages Depuis le début de l'année · Mois en cours · Personnalisé, dates du/au),
   comparaison avec la même période N-1 (case à cocher), région. La période porte sur `choc_date`.
   L'état est dans l'URL (`#du=…&au=…&cmp=1&vue=region&region=BF61`) : un lien reproduit une vue.
 - Cumul de la période = ce que les gens regardent ; comparaison par mois et par région avec N-1 sur la même feuille.
+- Graphiques mois / régions : une ligne par mois ou région, deux barres fines, valeurs en colonnes à droite (période | N-1) ;
+  la hauteur de ligne se réduit automatiquement (fitCols) pour que 12 mois + 17 régions tiennent sur la feuille.
 - Couleurs : période courante bleu foncé #0074B7, période précédente bleu clair #64BDEA (charte OCHA, ne pas inverser) ;
   choroplèthe communes en bleus (1–5 000 #64BDEA, 5 001–10 000 #009EDB, > 10 000 #0074B7), aucun = blanc ;
   régions sans déplacement sur la période grisées #E6E6E6 ; flux et communes de choc en rouge #ED1847.

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Déplacements — Burkina Faso</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap">
-<link rel="stylesheet" href="./style.css?v=20260924a">
+<link rel="stylesheet" href="./style.css?v=20260924b">
 </head>
 <body>
 <div class="chrome" id="chrome">
@@ -16,9 +16,8 @@
     <button aria-pressed="false" data-lens="alertes">Alertes</button>
   </div>
   <div class="presets" id="presets" aria-label="Période">
-    <button data-preset="annee">Année en cours</button>
+    <button data-preset="annee">Depuis le début de l'année</button>
     <button data-preset="mois">Mois en cours</button>
-    <button data-preset="12m">12 derniers mois</button>
     <button data-preset="perso">Personnalisé</button>
   </div>
   <label class="pick dates">du <input type="date" id="d-du"> au <input type="date" id="d-au"></label>
@@ -45,7 +44,6 @@
         <div class="sec">Personnes déplacées par région</div>
         <div class="pb" id="n-regions"></div>
       </div>
-      <div class="keyline" id="n-key"></div>
     </div>
     <div class="mapcol">
       <div class="sec">Communes d'accueil des personnes déplacées <small id="n-map-note"></small></div>
@@ -60,6 +58,7 @@
   <section class="view v-reg">
     <div class="col">
       <div class="kbox" data-r="kpis"></div>
+      <div class="kmini" data-r="mini"></div>
       <div>
         <div class="sec">Évolution mensuelle des personnes déplacées</div>
         <div class="pb" data-r="months"></div>
@@ -68,7 +67,6 @@
         <div class="sec">Communes d'accueil <small>top 5</small></div>
         <div class="hb" data-r="top"></div>
       </div>
-      <div class="keyline" data-r="key"></div>
     </div>
     <div class="mapcol">
       <div class="sec">Communes d'accueil et sens des déplacements <small data-r="note"></small></div>
@@ -89,6 +87,6 @@
 </div></div>
 <div id="all-regions" hidden></div>
 <script src="./data/geo_bfa.js?v=20260924a"></script>
-<script src="./app.js?v=20260924a"></script>
+<script src="./app.js?v=20260924b"></script>
 </body>
 </html>
