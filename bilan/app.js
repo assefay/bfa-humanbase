@@ -306,20 +306,21 @@ async function go(){
   RG=regionsFor(INT);
   if(!region||!RG.find(r=>r.n===region))region=RG[0].n;
   document.getElementById('sel-region').innerHTML=RG.map(r=>`<option value="${r.n}">${r.n}</option>`).join('');
+  document.getElementById('btn-print-all').textContent=`Tout imprimer (${nbPagesAll()} p.)`;
   render(); st.textContent='';
 }
 
 /* ---------- état d'affichage ---------- */
 function setLens(l){lens=l;document.querySelectorAll('.lens button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lens===l));render()}
 function render(){
-  document.querySelectorAll('.paper').forEach(p=>p.classList.toggle('on',p.dataset.lens===lens));
+  document.querySelectorAll('.paper:not(.pa)').forEach(p=>p.classList.toggle('on',p.dataset.lens===lens));
   document.getElementById('pick-cluster').hidden=lens!=='cluster';document.getElementById('pick-region').hidden=lens!=='region';
   document.getElementById('sel-cluster').value=cluster;document.getElementById('sel-region').value=region;
   document.querySelectorAll('#months button').forEach((b,i)=>b.setAttribute('aria-pressed',i+1===month));
   // titre de chaque feuille avec son cluster / sa région, quelle que soit la vue affichée (utile pour « Tout imprimer »)
   const sub={global:'',fin:'',cluster:' — '+clName(cluster),region:region?' — '+region:''};
   const F=finFor();
-  document.querySelectorAll('.paper').forEach(p=>{p.querySelector('.lensname').textContent=p.dataset.title+sub[p.dataset.lens];
+  document.querySelectorAll('.paper:not(.pa)').forEach(p=>{p.querySelector('.lensname').textContent=p.dataset.title+sub[p.dataset.lens];
     p.querySelector('.period').textContent=(p.dataset.lens==='fin'?(F?`FTS à fin ${LONG[month-1].toLowerCase()} 2026`:`${LONG[month-1]} 2026 — financement non disponible`):LONG[month-1]+' 2026')});
   ({global:renderGlobal,fin:renderFin,cluster:renderCluster,region:renderRegion})[lens]();
   fit();
@@ -334,9 +335,30 @@ document.getElementById('sel-cluster').addEventListener('change',e=>{cluster=e.t
 document.getElementById('sel-region').addEventListener('change',e=>{region=e.target.value;render()});
 // impression : la dernière feuille visible ne force pas de saut de page (sinon page blanche en fin de document)
 window.addEventListener('beforeprint',()=>{const ps=[...document.querySelectorAll('.paper')];ps.forEach(p=>p.classList.remove('last'));
-  const vis=ps.filter(p=>getComputedStyle(p).display!=='none'||document.body.classList.contains('all'));if(vis.length)vis[vis.length-1].classList.add('last')});
+  const vis=ps.filter(p=>getComputedStyle(p).display!=='none');if(vis.length)vis[vis.length-1].classList.add('last')});
 document.getElementById('btn-print').addEventListener('click',()=>window.print());
-document.getElementById('btn-print-all').addEventListener('click',()=>{renderGlobal();renderFin();renderCluster();renderRegion();document.body.classList.add('all');setTimeout(()=>{window.print();document.body.classList.remove('all')},50)});
+// « Tout imprimer » : Global (2) + Financement (1) + une feuille par cluster + deux feuilles par région.
+// Chaque feuille est rendue avec son cluster / sa région puis copiée (.pa) ; les feuilles d'origine sont masquées pendant l'impression.
+const nbPagesAll=()=>3+CL.length+2*RG.length;
+function printAll(){
+  const saved={lens,cluster,region};
+  const orig=[...document.querySelectorAll('.paper:not(.pa)')], sheets=document.getElementById('sheets');
+  const of=l=>orig.filter(p=>p.dataset.lens===l);
+  const snap=(p,sub)=>{const c=p.cloneNode(true);c.classList.remove('on','last');c.classList.add('pa');
+    c.querySelector('.lensname').textContent=p.dataset.title+(sub?' — '+sub:'');sheets.appendChild(c)};
+  document.querySelectorAll('.paper.pa').forEach(p=>p.remove());
+  orig.forEach(p=>p.classList.add('on')); // feuilles affichées pendant le rendu : les cartes mesurent leur vraie largeur
+  renderGlobal();renderFin();of('global').forEach(p=>snap(p));of('fin').forEach(p=>snap(p));
+  for(const c of CL){cluster=c.k;renderCluster();of('cluster').forEach(p=>snap(p,c.n))}
+  for(const r of RG){region=r.n;renderRegion();of('region').forEach(p=>snap(p,r.n))}
+  lens=saved.lens;cluster=saved.cluster;region=saved.region;
+  render(); // rétablit la vue à l'écran (classes .on, sélections)
+  document.body.classList.add('all');
+  setTimeout(()=>window.print(),50);
+}
+window.addEventListener('afterprint',()=>{if(!document.body.classList.contains('all'))return;
+  document.body.classList.remove('all');document.querySelectorAll('.paper.pa').forEach(p=>p.remove());fit()});
+document.getElementById('btn-print-all').addEventListener('click',printAll);
 
 function fit(){const st=document.getElementById('stage'),sh=document.getElementById('sheets');const w=st.clientWidth-32;const s=Math.min(1,w/1123);sh.style.transform=`scale(${s})`;const n=document.querySelectorAll('.paper.on').length;st.style.height=((794*n+18*(n-1))*s+44)+'px'}
 addEventListener('resize',fit);

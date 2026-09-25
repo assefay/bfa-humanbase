@@ -188,6 +188,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
 .split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 
 /* ---------- print ---------- */
+/* « Tout imprimer » : seules les copies .pa (toutes les feuilles, tous clusters, toutes régions) sont affichées */
+body.all .paper{display:none}
+body.all .paper.pa{display:flex}
 @page{size:A4 landscape;margin:0}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -199,7 +202,6 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ocha);outline-
   /* 209mm + overflow:hidden : une feuille ne déborde jamais sur une 2e page ; pas de saut après la dernière feuille visible */
   .paper{width:297mm;height:209mm;overflow:hidden;box-shadow:none;page-break-after:always;break-after:page}
   .paper.last{page-break-after:auto;break-after:auto}
-  body.all .paper{display:flex}
   .map path,.tbl button.n{cursor:default}
 }
 @media (max-width:640px){.chrome{gap:8px 12px}.brand span{display:none}}
