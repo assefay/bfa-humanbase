@@ -36,7 +36,7 @@ Même structure et mêmes conventions que `../bilan/` et `../deplacements/` (feu
 - Nouvelle orthographe de commune ou de village non reconnue → ajouter une ligne dans `w3_geo_alias`
   (`niveau`='adm3', `nom_norm` = nom sans accents/espaces/ponctuation en minuscules, `pcode`), puis
   `update partners_3w set village = village where bimestre = '…'` pour renettoyer le bimestre. Jamais de correction dans l'app.
-- Vues de l'app (sql/02_vues_app.sql) : `v_3w_app` (période × organisation × cluster × zone, ≈ 3 500 lignes, chargée entière
+- Vues de l'app (sql/02_vues_app.sql) : `mv_3w_orgs` (référentiel matérialisé, indexé, rafraîchi par déclencheur — indispensable : sans lui la vue met 20 s et l'API répond HTTP 500), `v_3w_app` (période × organisation × cluster × zone, ≈ 3 500 lignes, chargée entière
   au démarrage), `v_3w_pairs` (organisation → partenaire de mise en œuvre, bailleurs), `v_3w_orgs` (référentiel).
   Type d'organisation = `org_reference.type_organisation` canonisé en 6 catégories (ONG nationale, ONG internationale,
   Nations Unies, Gouvernement, Consortium, Mouvement Croix-Rouge), complété par `org_type` (feuille QUI du fichier).
