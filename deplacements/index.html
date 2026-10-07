@@ -1,92 +1,10 @@
 <!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Déplacements — Burkina Faso</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap">
-<link rel="stylesheet" href="./style.css?v=20260924b">
-</head>
-<body>
-<div class="chrome" id="chrome">
-  <div class="brand"><b>DÉPLACEMENTS</b><span>Burkina Faso · GCORR · HumanBase</span></div>
-  <div class="lens" role="tablist" aria-label="Vue">
-    <button aria-pressed="true" data-lens="national">National</button>
-    <button aria-pressed="false" data-lens="region">Région</button>
-    <button aria-pressed="false" data-lens="alertes">Alertes</button>
-  </div>
-  <div class="presets" id="presets" aria-label="Période">
-    <button data-preset="annee">Depuis le début de l'année</button>
-    <button data-preset="mois">Mois en cours</button>
-    <button data-preset="perso">Personnalisé</button>
-  </div>
-  <label class="pick dates">du <input type="date" id="d-du"> au <input type="date" id="d-au"></label>
-  <label class="pick chk"><input type="checkbox" id="chk-cmp" checked> Comparer à l'année précédente</label>
-  <label class="pick" id="pick-region" hidden>Région <select id="sel-region"></select></label>
-  <span class="status" id="status"></span>
-  <button class="print" id="btn-print" type="button">Imprimer cette vue</button>
-  <button class="print" id="btn-print-all" type="button">Tout imprimer</button>
-</div>
-
-<div class="stage" id="stage"><div class="sheets" id="sheets">
-
-<!-- ===== NATIONAL ===== -->
-<article class="paper on" data-lens="national" data-title="Vue nationale">
-  <section class="view" id="v-nat">
-    <div class="col">
-      <div class="kbox" id="n-kpis"></div>
-      <div class="kmini" id="n-mini"></div>
-      <div>
-        <div class="sec">Évolution mensuelle des personnes déplacées</div>
-        <div class="pb" id="n-months"></div>
-      </div>
-      <div>
-        <div class="sec">Personnes déplacées par région</div>
-        <div class="pb" id="n-regions"></div>
-      </div>
-    </div>
-    <div class="mapcol">
-      <div class="sec">Communes d'accueil des personnes déplacées <small id="n-map-note"></small></div>
-      <div id="n-map"></div>
-      <div class="legend" id="n-legend"></div>
-    </div>
-  </section>
-</article>
-
-<!-- ===== RÉGION (gabarit ; dupliqué pour « Tout imprimer ») ===== -->
-<article class="paper" data-lens="region" data-title="Vue régionale" id="paper-region">
-  <section class="view v-reg">
-    <div class="col">
-      <div class="kbox" data-r="kpis"></div>
-      <div class="kmini" data-r="mini"></div>
-      <div>
-        <div class="sec">Évolution mensuelle des personnes déplacées</div>
-        <div class="pb" data-r="months"></div>
-      </div>
-      <div>
-        <div class="sec">Communes d'accueil <small>top 5</small></div>
-        <div class="hb" data-r="top"></div>
-      </div>
-    </div>
-    <div class="mapcol">
-      <div class="sec">Communes d'accueil et sens des déplacements <small data-r="note"></small></div>
-      <div data-r="map"></div>
-      <div class="legend" data-r="legend"></div>
-    </div>
-  </section>
-</article>
-
-<!-- ===== ALERTES ===== -->
-<article class="paper tall" data-lens="alertes" data-title="Alertes de déplacement">
-  <section class="view" id="v-al">
-    <div class="kmini" id="a-mini"></div>
-    <div class="alerts" id="a-table"></div>
-  </section>
-</article>
-
-</div></div>
-<div id="all-regions" hidden></div>
-<script src="./data/geo_bfa.js?v=20260924a"></script>
-<script src="./app.js?v=20260924b"></script>
-</body>
-</html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Nouvelle adresse — ocha-bfa.github.io/deplacements</title>
+<meta http-equiv="refresh" content="0; url=https://ocha-bfa.github.io/deplacements/">
+<link rel="canonical" href="https://ocha-bfa.github.io/deplacements/">
+<script>location.replace('https://ocha-bfa.github.io/deplacements/'+location.search+location.hash);</script>
+</head><body style="font-family:Roboto,Arial,sans-serif;padding:2rem">
+<p>Cette application a déménagé : <a href="https://ocha-bfa.github.io/deplacements/">ocha-bfa.github.io/deplacements</a><br>
+Code source : <a href="https://github.com/ocha-bfa/deplacements">github.com/ocha-bfa/deplacements</a></p>
+</body></html>
