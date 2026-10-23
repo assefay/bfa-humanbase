@@ -598,6 +598,12 @@ $('app').addEventListener('load', async () => {
     $('appDot').className = 'db-dot spin';
     $('appStatus').textContent = 'initialisation…';
     await W.qaReady;
+    // Accès sécurisé : la page principale doit être connectée (session partagée)
+    if(!(W.AUTH && W.AUTH.token && await W.AUTH.ready)){
+      $('appDot').className = 'db-dot err';
+      $('appStatus').innerHTML = 'non connecté — <a href="index.html">connectez-vous sur la page principale</a>, puis rechargez cette page';
+      return;
+    }
 
     GIT_COMMIT = await loadGitCommit();
     QUESTIONS = await loadQuestions();

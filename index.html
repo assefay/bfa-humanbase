@@ -449,12 +449,15 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 </div>
 
 <div class="toast" id="toast"></div>
+<script src="auth.js"></script>
 <script>
 const SB='https://vshnatreclfntadwcyhy.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
 const PROXY='https://bfa-humanbase-proxy.assefayewondwossen.workers.dev';
 const RAPIDE_SYSTEM='Tu fournis UNIQUEMENT une réponse factuelle directe basée exclusivement sur les données fournies. Donne les chiffres, dates, lieux et sources pertinents. INTERDIT: aucune section d\'analyse, aucune partie narrative, aucun format SitRep, aucune projection, aucune recommandation, aucune interprétation stratégique. Ne produis PAS de sections type \'PARTIE 1 / PARTIE 2 / Analyse\'. Structure en points clés courts si utile. Ne jamais inventer de chiffres — si une donnée est absente, dis-le.';
-const H={'apikey':KEY,'Authorization':'Bearer '+KEY};
+const H={'apikey':KEY,'Authorization':'Bearer '+((window.AUTH&&AUTH.token)||KEY)};
+// En-têtes du proxy IA : le Worker exige le jeton de session
+const PH=()=>({'Content-Type':'application/json','Authorization':H.Authorization});
 const MONTHS_FR=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 const Y_COLORS={2024:'#E65100',2025:'#1565C0',2026:'#2E7D32'};
 const Y_BG={2024:'rgba(230,81,0,.15)',2025:'rgba(21,101,192,.15)',2026:'rgba(46,125,50,.15)'};
@@ -840,7 +843,7 @@ fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financie
   try {
     const resp = await fetch(PROXY, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: PH(),
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 500,
@@ -1632,6 +1635,7 @@ document.getElementById('qInput').addEventListener('input',e=>showIntentPreview(
 
 async function runQuery(){
   const qEl=document.getElementById('qInput');const question=(qEl.value||qEl.getAttribute('data-val')||'').trim();if(!question)return;
+  if(window.AUTH&&AUTH.log)AUTH.log('question',question);
   let intent = {region:null, year:null, tables:[], reason:''};
   try { intent = await routeQuery(question); } catch(e) { intent = detectIntent(question); }
   const btn=document.getElementById('qBtn');btn.disabled=true;btn.textContent='Analyse...';
@@ -1640,7 +1644,7 @@ async function runQuery(){
   try{
     const context=await buildContext(question);
     const systemPrompt=await buildSystemPrompt();
-    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+    const resp=await fetch(PROXY,{method:'POST',headers:PH(),body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
     const data=await resp.json();let answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
     answer = enforceTerminologyRules(answer).text;
     const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -1661,7 +1665,7 @@ async function generateReport(){
   resEl.insertAdjacentHTML('afterbegin',`<div class="res-card" id="${lid}"><div class="res-meta"><div class="res-icon">📄</div><div><div class="res-title">Génération...</div></div></div><div class="dots"><span></span><span></span><span></span></div></div>`);
   try{
     const context=await buildContext(question);
-    const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:`Rédacteur OCHA Burkina Faso. Rapports sur données réelles uniquement. Ne jamais inventer de chiffres. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan.`,messages:[{role:'user',content:`${context}\n\nDEMANDE: ${question}`}]})});
+    const resp=await fetch(PROXY,{method:'POST',headers:PH(),body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:`Rédacteur OCHA Burkina Faso. Rapports sur données réelles uniquement. Ne jamais inventer de chiffres. Régions: Liptako, Soum, Yaadga, Bankui, Sourou, Koulsé, Goulmou, Sirba, Tapoa, Nakambé, Djoro, Guiriko, Tannouyan.`,messages:[{role:'user',content:`${context}\n\nDEMANDE: ${question}`}]})});
     const data=await resp.json();let text=data.content?.[0]?.text||'';
     text = enforceTerminologyRules(text).text;
     const labels={weekly:'Synthèse hebdo',monthly:'Narrative mensuelle',sitrep:'SitRep',security:'Rapport sécurité',displacement:'Rapport déplacement',donor:'Résumé donateur'};
@@ -1676,6 +1680,7 @@ function ssq(q){document.getElementById('sitInput').value=q;document.getElementB
 
 async function runSituation(){
   const sEl=document.getElementById('sitInput');const question=(sEl.value||sEl.getAttribute('data-val')||'').trim();if(!question)return;
+  if(window.AUTH&&AUTH.log)AUTH.log('situation',question);
   document.getElementById("sitInput").blur();
   const btn=document.getElementById('sitBtn');btn.disabled=true;btn.textContent='Analyse...';
   const resEl=document.getElementById('sitResults');const lid='s'+Date.now();
@@ -1684,7 +1689,7 @@ async function runSituation(){
     const context=await buildContext(question);
     const withNarrative=document.getElementById('sitNarrativeChk').checked;
     if(!withNarrative){
-      const fastResp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8000,system:RAPIDE_SYSTEM,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const fastResp=await fetch(PROXY,{method:'POST',headers:PH(),body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8000,system:RAPIDE_SYSTEM,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
       const fastData=await fastResp.json();
       let fastAnswer=fastData.content?.[0]?.text||(fastData.error?'⚠️ '+fastData.error.message:'Aucune réponse.');
       const cutRx=/^(?:[#\-*]+\s*)?PARTIE\s+(?:2|II)\b/im;
@@ -1701,7 +1706,7 @@ async function runSituation(){
     btn.textContent='Génération du récit en cours… (jusqu\'à 2 min)';
     console.time('[perf] 3-sonnet-synthesis');
     try{
-      const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
+      const resp=await fetch(PROXY,{method:'POST',headers:PH(),body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,system:systemPrompt,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
       const data=await resp.json();
       console.timeEnd('[perf] 3-sonnet-synthesis');
       let answer=data.content?.[0]?.text||(data.error?'⚠️ '+data.error.message:'Aucune réponse.');
@@ -1735,7 +1740,7 @@ window.SB = SB; window.H = H; window.PROXY = PROXY;
 window.qaAnswer = async function(question, mode='rapide'){
   const t0=performance.now();
   const context=await buildContext(question);
-  const resp=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json'},
+  const resp=await fetch(PROXY,{method:'POST',headers:PH(),
     body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8000,
       system:RAPIDE_SYSTEM,messages:[{role:'user',content:`${context}\n\nQUESTION: ${question}`}]})});
   const data=await resp.json();
