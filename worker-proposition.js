@@ -1,3 +1,12 @@
+// ⚠ NON DÉPLOYÉ. Le Worker en production (Cloudflare, « bfa-humanbase-proxy ») est édité dans le
+// tableau de bord Cloudflare et contient aussi la route /ingest (HB-FileWatch) avec SB_URL / SB_SERVICE_KEY.
+// Sécurisation appliquée en production le 2026-10-23 (3 modifications) :
+//   1. OPTIONS : Access-Control-Allow-Headers = "Content-Type, Authorization"
+//   2. Avant tout appel IA (après la route /ingest) : if (!(await hbOk(request, env))) return 401
+//   3. hbOk(q, env) : origine https://ocha-bfa.github.io + jeton de session + rpc is_allowed (liste app_users)
+// Ce fichier est une version complète proposée (limites de modèles / max_tokens, journal des appels IA)
+// à fusionner un jour avec le code de production, en gardant /ingest.
+
 // BFA HumanBase — proxy IA (Cloudflare Worker "bfa-humanbase-proxy")
 // Sécurité (2026-10-23) :
 //  - n'accepte que les appels venant du site (ALLOWED_ORIGINS)
