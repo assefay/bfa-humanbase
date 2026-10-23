@@ -774,8 +774,14 @@ function enforceSourcingRules(routerOutput, query) {
   // convois effectués) + PIN/cible/atteints des provinces concernées, pas seulement les incidents.
   if (/convoi|escort[ée]?|ravitaillement|desserte|axes? ravitaill/.test(q)) {
     add('convois', 'rule7-convois');
+    add('unhas', 'rule7-convois');
     add('ocha_field_incidents', 'rule7-convois');
     add('acled_incidents', 'rule7-convois');
+  }
+  // Règle 7 bis : accès aérien UNHAS — toujours lu avec la desserte routière (convois)
+  if (/unhas|a[ée]rien|vols? humanitaires?|h[ée]lico|passagers?|\bfret\b|\bcargo\b|pont a[ée]rien/.test(q)) {
+    add('unhas', 'rule7bis-unhas');
+    add('convois', 'rule7bis-unhas');
   }
   // Règle 6 : bilan humain — les totaux de victimes font foi dans les agrégats
   // précalculés des incidents terrain, jamais dans le narratif hebdomadaire.
@@ -842,6 +848,7 @@ hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de pop
 cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.
 partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).
 convois: Convois 2026 — régularité de la desserte par commune (classification finale de l'équipe accès : convoi régulier ≥3, convoi irrégulier 1–2, inaccessible / pas de convoi possible, accessible sans convoi), convois effectués (départ, destination, dates, intrants humanitaires), et PIN / ciblés / atteints (intersectoriel HNRP 2026) des provinces qui dépendent des convois. Pour toute question sur les convois, escortes, ravitaillement, desserte des localités.
+unhas: UNHAS 2026 (service aérien humanitaire) — passagers et fret par destination et par mois, par agence et nature du fret, avec le statut convoi de chaque commune desservie. Pour toute question sur les vols, l'accès aérien, les passagers, le fret / cargo, les hélicoptères, et avec les convois pour l'accès logistique.
 fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financiers, montants financés, taux de couverture et déficit, par année (2024, 2025, 2026) et par cluster; principaux bailleurs et principales organisations récipiendaires. Pour toute question sur le financement, les fonds reçus, les bailleurs ou donateurs, la couverture financière, le gap ou déficit de financement, le coût du plan, le HNRP financé. Portée nationale uniquement: FTS ne publie pas de ventilation par région, province ou commune — choisir quand même cette table lorsque la question cite un lieu, et recopier ce lieu dans regions.`;
 
   try {
@@ -1408,12 +1415,44 @@ ${rows}`);
 RÈGLE 1 : une question sur « la situation des convois » se traite d'abord par la RÉGULARITÉ (combien de communes à convoi régulier / irrégulier / inaccessibles, quels axes, combien de convois effectués) et par les POPULATIONS CONCERNÉES (PIN, ciblés, atteints) ; les incidents sur les convois viennent ensuite.
 RÈGLE 2 : PIN, ciblés et atteints n'existent QUE par province. Les chiffres ci-dessous portent sur les PROVINCES contenant des communes dépendantes des convois — l'écrire ainsi (« dans les provinces où des communes dépendent des convois »), jamais « dans les communes à convoi ». Ne jamais additionner les groupes avec le total national ; citer les chiffres tels quels.
 RÈGLE 3 : définitions — convoi régulier = au moins 3 convois ; convoi irrégulier = 1 à 2 convois ; inaccessible = aucun convoi possible.
+RÈGLE 4 : si le bloc UNHAS est présent, montrer comment l'accès aérien complète la route (destinations desservies par air selon leur statut convoi).
 SYNTHÈSE NATIONALE PAR GROUPE DE PROVINCES :
 ${synTxt}
 PROVINCES DÉPENDANTES DES CONVOIS${wanted.length?' (périmètre demandé)':''} :
 ${provTxt||'  aucune dans le périmètre demandé'}
 CONVOIS EFFECTUÉS EN 2026${wanted.length?' (périmètre demandé)':''} : ${nConv} convois vers ${destS.length} destinations
 ${destTxt||'  aucun dans le périmètre demandé'}`);
+  }
+  // UNHAS 2026 — accès aérien, par destination, avec le statut convoi de la commune
+  if(hasTable('unhas')){
+    const nrmU=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const wantedU=(route.regions&&route.regions.length?route.regions:(region?[region]:[])).map(nrmU);
+    const inScopeU=r=>!wantedU.length||wantedU.includes(nrmU(r));
+    const [udest,umois,unat]=await Promise.all([
+      sb(`v_unhas_destinations?select=*&order=cargo_kg.desc.nullslast`),
+      sb(`v_unhas_mensuel?select=*&order=mois.asc`),
+      sb(`v_unhas_cargo_nature?select=*&order=cargo_kg.desc`)
+    ]);
+    const ud=udest.filter(r=>inScopeU(r.region));
+    const kg=v=>v==null?'0 t':(Number(v)/1000).toFixed(1).replace('.',',')+' t';
+    const totPax=umois.reduce((a,r)=>a+Number(r.pax_total||0),0), totKg=umois.reduce((a,r)=>a+Number(r.cargo_kg||0),0);
+    const lastM=umois.length?String(umois[umois.length-1].mois).slice(0,7):'?';
+    const byStat={};ud.forEach(r=>{const k=r.statut_convoi||'non rattaché';byStat[k]=byStat[k]||{n:0,pax:0,kg:0};byStat[k].n++;byStat[k].pax+=Number(r.pax_arrivee||0);byStat[k].kg+=Number(r.cargo_kg||0);});
+    const statTxt=Object.entries(byStat).map(([k,v])=>`  ${k}: ${v.n} destinations · ${n0(v.pax)} passagers arrivés · ${kg(v.kg)} de fret`).join('\n');
+    const destTxtU=ud.map(r=>`  ${r.region||'?'} / ${r.commune} [statut convoi: ${r.statut_convoi||'non rattaché'}]: ${n0(r.pax_arrivee)} passagers arrivés, ${n0(r.pax_depart)} partis · fret ${kg(r.cargo_kg)} · desservie ${r.mois_desservis||r.mois_cargo||'?'} mois sur la période${r.agences?' · agences: '+r.agences:''}`).join('\n');
+    const moisTxt=umois.map(r=>`  ${String(r.mois).slice(0,7)}: ${n0(r.pax_total)} passagers · ${kg(r.cargo_kg)} de fret`).join('\n');
+    const natTxt=unat.map(r=>`  ${r.nature}: ${kg(r.cargo_kg)}`).join('\n');
+    parts.push(`=== UNHAS 2026 — ACCÈS AÉRIEN HUMANITAIRE [précalculé] (source : UNHAS / PAM, données mensuelles jusqu'à ${lastM}) ===
+RÈGLE : présenter UNHAS comme le complément de la desserte routière : pour chaque destination, rappeler son statut convoi (convoi régulier / irrégulier / inaccessible / accessible). Les tonnes et passagers sont cumulés sur la période ; citer les chiffres tels quels.
+TOTAL NATIONAL ${String(umois[0]?.mois||'').slice(0,7)} → ${lastM} : ${n0(totPax)} passagers (tous trajets) · ${kg(totKg)} de fret
+PAR STATUT CONVOI DES COMMUNES DESSERVIES${wantedU.length?' (périmètre demandé)':''} :
+${statTxt||'  aucune destination dans le périmètre demandé'}
+DESTINATIONS${wantedU.length?' (périmètre demandé)':''} :
+${destTxtU||'  aucune'}
+PAR MOIS (national) :
+${moisTxt}
+FRET PAR NATURE (national) :
+${natTxt}`);
   }
   // FINANCEMENT FTS — national (aucune ventilation régionale possible)
   if(isAll||hasTable('fts_financement')){
