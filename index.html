@@ -770,6 +770,13 @@ function enforceSourcingRules(routerOutput, query) {
   if (/financement|financé|financee|bailleur|donateur|fonds|budget|couverture financière|couverture financiere|déficit|deficit|\bgap\b|besoins financiers|us\$|usd|millions? de dollars|hnrp financé|plan financé/.test(q)) {
     add('fts_financement', 'rule5-financement');
   }
+  // Règle 7 : convois — la situation des convois = régularité (classification par commune,
+  // convois effectués) + PIN/cible/atteints des provinces concernées, pas seulement les incidents.
+  if (/convoi|escort[ée]?|ravitaillement|desserte|axes? ravitaill/.test(q)) {
+    add('convois', 'rule7-convois');
+    add('ocha_field_incidents', 'rule7-convois');
+    add('acled_incidents', 'rule7-convois');
+  }
   // Règle 6 : bilan humain — les totaux de victimes font foi dans les agrégats
   // précalculés des incidents terrain, jamais dans le narratif hebdomadaire.
   if (/civils? tu[ée]s?|victimes civiles|morts? civils?|d[ée]c[èe]s civils?|bilan humain|personnes tu[ée]es|bless[ée]s/.test(q)) {
@@ -834,6 +841,7 @@ hpc_pin: HPC 2026 par province × cluster × groupe de population (non-déplacé
 hpc_disagg: PIN et cible HPC 2026 désagrégés par province : par groupe de population (PDI, retournés, non-déplacés, réfugiés), par âge et sexe (filles/garçons 0-17, femmes/hommes 18-64, 65+), et par handicap. Pour toute question sur le sexe, l'âge, les enfants, les femmes, ou le handicap des personnes dans le besoin ou ciblées.
 cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitoring cumulatif janvier-mai, vue v_cluster_coverage) par cluster × province, avec couverture vs cibles ET vs cibles priorisées (provinces en sévérité intersectorielle 4). Pour toute question sur les personnes atteintes/assistées, la couverture, les gaps de réponse, le bilan intersectoriel, les personnes priorisées, l'avancement par cluster.
 partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).
+convois: Convois 2026 — régularité de la desserte par commune (classification finale de l'équipe accès : convoi régulier ≥3, convoi irrégulier 1–2, inaccessible / pas de convoi possible, accessible sans convoi), convois effectués (départ, destination, dates, intrants humanitaires), et PIN / ciblés / atteints (intersectoriel HNRP 2026) des provinces qui dépendent des convois. Pour toute question sur les convois, escortes, ravitaillement, desserte des localités.
 fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financiers, montants financés, taux de couverture et déficit, par année (2024, 2025, 2026) et par cluster; principaux bailleurs et principales organisations récipiendaires. Pour toute question sur le financement, les fonds reçus, les bailleurs ou donateurs, la couverture financière, le gap ou déficit de financement, le coût du plan, le HNRP financé. Portée nationale uniquement: FTS ne publie pas de ventilation par région, province ou commune — choisir quand même cette table lorsque la question cite un lieu, et recopier ce lieu dans regions.`;
 
   try {
@@ -931,7 +939,8 @@ fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financie
     };
     const fallbackRegSrc = place ? place.region : region;
     const fallbackRegions = fallbackRegSrc ? resolveRegionToCurrent(fallbackRegSrc) : [];
-    return {
+    // Les règles déterministes (convois, financement, bilan humain…) s'appliquent aussi au repli
+    return enforceSourcingRules({
       tables: isAll
         ? ['zone_enclavees','gcorr_alerts','weekly_reports','ocha_field_incidents','acled_incidents','daily_updates']
         : [...new Set(topics.flatMap(t => baseTopicMap[t]||[]))],
@@ -943,7 +952,7 @@ fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financie
       shape: shapeSeed,
       place: place,
       reason: 'fallback'
-    };
+    }, question);
   }
 }
 
@@ -1377,6 +1386,34 @@ ${rows}`);
       }).join('\n');
       parts.push(`=== PRÉSENCE OPÉRATIONNELLE 3W — NATIONAL [précalculé] (source: 3W inter-cluster, collecte bimestrielle) ===\nRÈGLE: la collecte 3W est BIMESTRIELLE. Périodes présentes dans ces données: ${[...new Set(w3.map(r=>r.bimestre).filter(Boolean))].join(', ')}. La présence s'exprime par période de deux mois, JAMAIS par mois individuel: une question portant sur un mois isolé se répond par le bimestre qui le contient, en nommant explicitement la période (ex. « en mai » → période mai-juin). Comptage = organisations principales + partenaires de mise en œuvre (partenaire_moe), union dédupliquée et PRÉCALCULÉE — citer tel quel, ne jamais recalculer. Ne jamais additionner les périodes: la ligne ENSEMBLE = distinctes précalculées. Un cluster absent = aucun partenaire rapporté.\n${rows}`);
     }
+  }
+  // CONVOIS 2026 — régularité (par commune) + convois effectués + PIN/cible/atteints des provinces concernées
+  if(hasTable('convois')){
+    const nrm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const wanted=(route.regions&&route.regions.length?route.regions:(region?[region]:[])).map(nrm);
+    const inScope=r=>!wanted.length||wanted.includes(nrm(r));
+    const [syn,prov,dest]=await Promise.all([
+      sb(`v_convoi_synthese?select=*&order=groupe.asc`),
+      sb(`v_convoi_province?select=*&order=groupe.asc,pin.desc`),
+      sb(`v_convois_2026_destinations?select=*&order=nb_convois.desc`)
+    ]);
+    const provS=prov.filter(r=>inScope(r.region)&&r.groupe&&!r.groupe.startsWith('3.'));
+    const destS=dest.filter(r=>inScope(r.region));
+    const synTxt=syn.map(r=>`  ${r.groupe}: ${n0(r.provinces)} provinces, ${n0(r.communes)} communes (dont ${n0(r.communes_convoi_regulier)} à convoi régulier, ${n0(r.communes_convoi_irregulier)} à convoi irrégulier, ${n0(r.communes_inaccessibles)} inaccessibles) · PIN ${n0(r.pin)} (${String(r.pct_pin_national).replace('.',',')} % du PIN national) · ciblés ${n0(r.cible)} · atteints ${n0(r.atteints)} (${String(r.pct_cible_atteinte).replace('.',',')} % de la cible)`).join('\n');
+    const provTxt=provS.map(r=>`  ${r.region} / ${r.province}: ${r.communes} communes — convoi régulier: ${r.liste_regulier||'aucune'} · convoi irrégulier: ${r.liste_irregulier||'aucune'} · inaccessibles: ${r.liste_inaccessibles||'aucune'} · PIN ${n0(r.pin)} · ciblés ${n0(r.cible)} · atteints ${n0(r.atteints)} (${String(r.pct_cible_atteinte??'?').replace('.',',')} %)`).join('\n');
+    const destTxt=destS.map(r=>`  ${r.region}: ${r.departs} → ${r.destination} — ${r.nb_convois} convoi(s) (${r.premier_depart}${r.dernier_depart!==r.premier_depart?' à '+r.dernier_depart:''})${r.avec_intrants_humanitaires?`, ${r.avec_intrants_humanitaires} avec intrants humanitaires`:''}`).join('\n');
+    const nConv=destS.reduce((a,r)=>a+Number(r.nb_convois||0),0);
+    const moisAtt=(prov.find(r=>r.atteints_jusqu_au_mois)||{}).atteints_jusqu_au_mois;
+    parts.push(`=== CONVOIS 2026 — RÉGULARITÉ DE LA DESSERTE ET POPULATIONS CONCERNÉES [précalculé] (sources : classification finale de l'équipe accès OCHA du 20/10/2026 par commune ; liste des convois 2026 ; HNRP 2026 intersectoriel ; atteints cumulés jusqu'au mois ${moisAtt||'?'}) ===
+RÈGLE 1 : une question sur « la situation des convois » se traite d'abord par la RÉGULARITÉ (combien de communes à convoi régulier / irrégulier / inaccessibles, quels axes, combien de convois effectués) et par les POPULATIONS CONCERNÉES (PIN, ciblés, atteints) ; les incidents sur les convois viennent ensuite.
+RÈGLE 2 : PIN, ciblés et atteints n'existent QUE par province. Les chiffres ci-dessous portent sur les PROVINCES contenant des communes dépendantes des convois — l'écrire ainsi (« dans les provinces où des communes dépendent des convois »), jamais « dans les communes à convoi ». Ne jamais additionner les groupes avec le total national ; citer les chiffres tels quels.
+RÈGLE 3 : définitions — convoi régulier = au moins 3 convois ; convoi irrégulier = 1 à 2 convois ; inaccessible = aucun convoi possible.
+SYNTHÈSE NATIONALE PAR GROUPE DE PROVINCES :
+${synTxt}
+PROVINCES DÉPENDANTES DES CONVOIS${wanted.length?' (périmètre demandé)':''} :
+${provTxt||'  aucune dans le périmètre demandé'}
+CONVOIS EFFECTUÉS EN 2026${wanted.length?' (périmètre demandé)':''} : ${nConv} convois vers ${destS.length} destinations
+${destTxt||'  aucun dans le périmètre demandé'}`);
   }
   // FINANCEMENT FTS — national (aucune ventilation régionale possible)
   if(isAll||hasTable('fts_financement')){
