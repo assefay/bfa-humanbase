@@ -789,6 +789,20 @@ function enforceTerminologyRules(text) {
     text = text.replace(pibPattern, 'PIN');
     corrections.push({ rule: 'PIB→PIN', count });
   }
+  // Terme officiel OCHA BFA : « enclavé(e)(s) », jamais « assiégé(e)(s) » / « besieged »
+  // (pas de \b : en JavaScript « é » ne compte pas comme une lettre pour \b)
+  const siegePattern = /(^|[^A-Za-zÀ-ÿ])([Aa])ssi[ée]g[ée](e?)(s?)(?![A-Za-zÀ-ÿ])/g;
+  const nSiege = (text.match(siegePattern) || []).length;
+  if (nSiege) {
+    text = text.replace(siegePattern, (m, pre, a, e2, s) => pre + (a === 'A' ? 'E' : 'e') + 'nclavé' + e2 + s);
+    corrections.push({ rule: 'assiégé→enclavé', count: nSiege });
+  }
+  const besPattern = /\b([Bb])esieged\b/g;
+  const nBes = (text.match(besPattern) || []).length;
+  if (nBes) {
+    text = text.replace(besPattern, (m, b) => (b === 'B' ? 'E' : 'e') + 'nclaved');
+    corrections.push({ rule: 'besieged→enclaved', count: nBes });
+  }
   if (corrections.length > 0) {
     console.warn('[enforceTerminologyRules] corrections applied:', corrections);
   }
@@ -804,7 +818,7 @@ async function routeQuery(question) {
   const shapeSeed = detectShape(question);     // deterministic fallback shape
   
   // Short table index — no need to load full descriptions from KB
-  const TABLE_INDEX = `zone_enclavees: localités assiégées/enclavées/inaccessibles, niveaux 1-2-3, population, PDI
+  const TABLE_INDEX = `zone_enclavees: localités difficiles d'accès / enclavées / inaccessibles, niveaux 1-2-3, population, PDI
 gcorr_alerts: déplacements officiels GCORR validés — TOUJOURS inclure avec weekly_reports pour les questions sur les déplacements
 weekly_reports: rapports hebdomadaires OCHA "La semaine en bref", situation par région par semaine, points saillants, contexte sécuritaire, mouvements population (estimations terrain non validées), réponse humanitaire, accès/CMCoord, civils tués, déplacés estimés
 ocha_field_incidents: incidents sécuritaires terrain OCHA — TOUJOURS inclure avec acled_incidents pour les questions sur les incidents
@@ -1014,9 +1028,9 @@ async function buildContext(question){
     console.log('[diag] zones view rows:', agg.length, '| localites:', loc.length);
     if(agg.length){
       const r=agg[0];
-      const resume=`  [RÉGION ${r.region} (TOTAL) — snapshot ${r.report_date}] ${fmtNum(r.localites)} localités · ${fmtNum(r.population_totale)} personnes (${fmtNum(r.pdi)} PDI, ${fmtNum(r.non_deplaces)} non-déplacés) — Niveau 1 (difficile d'accès): ${fmtNum(r.localites_niv1||0)} localités, ${fmtNum(r.pop_niv1||0)} pers. · Niveau 2 (assiégée): ${fmtNum(r.localites_niv2||0)} localités, ${fmtNum(r.pop_niv2||0)} pers. · Niveau 3 (inaccessible): ${fmtNum(r.localites_niv3||0)} localités, ${fmtNum(r.pop_niv3||0)} pers.`;
+      const resume=`  [RÉGION ${r.region} (TOTAL) — snapshot ${r.report_date}] ${fmtNum(r.localites)} localités · ${fmtNum(r.population_totale)} personnes (${fmtNum(r.pdi)} PDI, ${fmtNum(r.non_deplaces)} non-déplacés) — Niveau 1 (difficile d'accès): ${fmtNum(r.localites_niv1||0)} localités, ${fmtNum(r.pop_niv1||0)} pers. · Niveau 2 (enclavée): ${fmtNum(r.localites_niv2||0)} localités, ${fmtNum(r.pop_niv2||0)} pers. · Niveau 3 (inaccessible): ${fmtNum(r.localites_niv3||0)} localités, ${fmtNum(r.pop_niv3||0)} pers.`;
       const listing=loc.map(l=>`  [Niv.${l.niveau}] ${l.localite} (${l.adm3_name||'?'}, ${l.adm2_name||'?'}): ${fmtNum(l.population_total||0)} pers.${l.pdi?' dont '+fmtNum(l.pdi)+' PDI':''}`).join('\n');
-      parts.push(`=== ZONES DIFFICILES D'ACCÈS — ${region} [précalculé, snapshot ${r.report_date}] (source: zone_enclavees) ===\nRÈGLE: totaux PRÉCALCULÉS du snapshot le plus récent — citer tels quels, ne jamais recompter. Terminologie officielle: Niveau 1 = Zone difficile d'accès 1, Niveau 2 = assiégée, Niveau 3 = inaccessible.\nAGRÉGATS:\n${resume}\nLOCALITÉS:\n${listing}`);
+      parts.push(`=== ZONES DIFFICILES D'ACCÈS — ${region} [précalculé, snapshot ${r.report_date}] (source: zone_enclavees) ===\nRÈGLE: totaux PRÉCALCULÉS du snapshot le plus récent — citer tels quels, ne jamais recompter. Terminologie officielle: Niveau 1 = Zone difficile d'accès 1, Niveau 2 = enclavée, Niveau 3 = inaccessible. Ne jamais écrire « assiégée ».\nAGRÉGATS:\n${resume}\nLOCALITÉS:\n${listing}`);
     }else{gaps.push('Zones difficiles d\'accès');parts.push(`=== ZONES DIFFICILES D'ACCÈS ===\nAucune localité recensée pour ${region} au dernier snapshot.`);}
   }
 
@@ -1400,7 +1414,7 @@ ${parReci||'  —'}`);
     if(zn.length){
       const r=zn[0];
       parts.push(`=== ZONES DIFFICILES D'ACCÈS — NATIONAL [précalculé, snapshot ${r.report_date}] (source: zone_enclavees) ===
-RÈGLE: totaux PRÉCALCULÉS du snapshot le plus récent — citer tels quels, ne jamais recompter ni additionner les régions. Terminologie officielle: Niveau 1 = difficile d'accès, Niveau 2 = assiégée, Niveau 3 = inaccessible.
+RÈGLE: totaux PRÉCALCULÉS du snapshot le plus récent — citer tels quels, ne jamais recompter ni additionner les régions. Terminologie officielle: Niveau 1 = difficile d'accès, Niveau 2 = enclavée, Niveau 3 = inaccessible. Ne jamais écrire « assiégée ».
   TOTAL NATIONAL: ${n0(r.localites)} localités · ${n0(r.population_totale)} personnes, dont ${n0(r.pdi)} PDI et ${n0(r.non_deplaces)} non-déplacés
   Niveau 1: ${n0(r.localites_niv1)} localités, ${n0(r.pop_niv1)} pers.
   Niveau 2: ${n0(r.localites_niv2)} localités, ${n0(r.pop_niv2)} pers.
