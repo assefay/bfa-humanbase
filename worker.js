@@ -9,7 +9,7 @@
 
 const SB = 'https://vshnatreclfntadwcyhy.supabase.co';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
-const ALLOWED_ORIGINS = ['https://assefay.github.io'];
+const ALLOWED_ORIGINS = ['https://ocha-bfa.github.io'];
 const ALLOWED_MODELS = new Set(['claude-haiku-4-5-20251001', 'claude-sonnet-4-5']);
 const MAX_TOKENS = 8000;
 const MAX_BODY_BYTES = 1_500_000;

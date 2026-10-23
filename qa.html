@@ -198,7 +198,7 @@ const api = (path, opts={}) => fetch(`${W.SB}/rest/v1/${path}`,
 // sur 'unknown' plutôt que de bloquer la suite.
 async function loadGitCommit(){
   try {
-    const r = await fetch('https://api.github.com/repos/assefay/bfa-humanbase/commits/main',
+    const r = await fetch('https://api.github.com/repos/ocha-bfa/humanbase/commits/main',
       {headers:{'Accept':'application/vnd.github+json'}});
     if(!r.ok) return 'unknown';
     const j = await r.json();
