@@ -1154,8 +1154,13 @@ async function buildContext(question){
     const rAcc=region?`&adm1_region=ilike.*${encodeURIComponent(region)}*`:'';
     const acc=await sb(`access_perception?select=survey_date,round,adm1_region,adm3_commune,score_national_ngo,score_international_ngo,score_un,score_average&limit=400${rAcc}${yAcc}&order=survey_date.desc`);
     if(acc.length){
-      const rows=acc.map(r=>`  [${r.survey_date}|${r.round}|${r.adm1_region}/${r.adm3_commune}] ONGnat:${r.score_national_ngo??'-'} ONGI:${r.score_international_ngo??'-'} UN:${r.score_un??'-'} moy:${r.score_average??'-'}`).join('\n');
-      parts.push(`=== PERCEPTION ACCÈS — scores [${acc.length}] ===\n${rows}`);
+      // Le score seul n'est pas interprétable : on transmet la définition (knowledge_base id 51)
+      const ACC_LBL={1:'contraintes faibles (accessible)',2:'contraintes modérées',3:'contraintes élevées'};
+      const lbl=v=>v==null?'non évalué':(ACC_LBL[Math.round(v)]||String(v));
+      const rows=acc.map(r=>`  [${r.survey_date}|${r.round}|${r.adm1_region}/${r.adm3_commune}] synthèse: ${lbl(r.score_average)} · ONG nationales: ${lbl(r.score_national_ngo)} · ONG internationales: ${lbl(r.score_international_ngo)} · Nations Unies: ${lbl(r.score_un)}`).join('\n');
+      parts.push(`=== PERCEPTION ACCÈS — sévérité des contraintes d'accès perçue par les partenaires, par commune [${acc.length}] ===
+RÈGLE DE RÉDACTION : ne JAMAIS écrire « score 1/2/3 » ni un chiffre seul — toujours le libellé : « contraintes faibles » (accès possible vers presque toutes les personnes ciblées), « contraintes modérées » (restrictions ponctuelles ; une partie des personnes ciblées n'est pas atteinte ou l'est avec retard), « contraintes élevées » (même avec des moyens adaptés, seule une minorité des personnes ciblées peut être atteinte). Ex. : « Dori est la seule commune où les partenaires perçoivent des contraintes modérées », et non « score 2 ». La synthèse est la valeur majoritaire des trois groupes d'acteurs (jamais une moyenne). Ce sont des perceptions, pas des mesures ; ne pas confondre avec les niveaux des zones difficiles d'accès (localités).
+${rows}`);
     }else{gaps.push('Perception accès');parts.push(`=== PERCEPTION ACCÈS — scores ===\nAucune donnée de perception${region?' pour '+region:''}${year?' en '+year:''}.`);}
   }
   // 7. HPC SÉVÉRITÉ JIAF 2026
