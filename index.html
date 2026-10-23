@@ -204,25 +204,7 @@ tbody td{padding:9px 14px;color:var(--ink2);line-height:1.4;vertical-align:top;m
 </style>
 </head>
 <body>
-<div id="loginOverlay" class="login-overlay">
-  <div style="text-align:center">
-    <div style="font-size:1.4rem;font-weight:700;color:white;margin-bottom:5px">BFA HumanBase</div>
-    <div style="font-size:.82rem;color:var(--un-light);margin-bottom:8px">Burkina Faso — Base humanitaire OCHA</div>
-  </div>
-  <div style="font-size:.95rem;font-weight:600;color:rgba(255,255,255,.75)" id="loginWho">Qui êtes-vous ?</div>
-  <div style="display:flex;gap:14px" id="loginBtns">
-    <button class="login-user-btn" onclick="selectUser('Assefa')">Assefa</button>
-    <button class="login-user-btn" onclick="selectUser('Claude')">Claude</button>
-    <button class="login-user-btn" onclick="selectUser('Barry')">Barry</button>
-  </div>
-  <div id="loginPwRow" style="display:none;flex-direction:column;align-items:center;gap:7px">
-    <div style="display:flex;gap:9px">
-      <input class="login-pw" id="loginPw" type="password" placeholder="Mot de passe..." onkeydown="if(event.key==='Enter')checkLogin()">
-      <button class="login-submit" onclick="checkLogin()">OK →</button>
-    </div>
-    <div style="color:#ff8080;font-size:.76rem;min-height:16px" id="loginErr"></div>
-  </div>
-</div>
+<!-- Ancien écran « Qui êtes-vous ? » supprimé le 2026-10-23 : remplacé par la connexion sécurisée (auth.js) -->
 <header>
   <div class="logo-mark"></div>
   <div class="logo-text">BFA HumanBase <span>Burkina Faso — Base humanitaire OCHA</span></div>
@@ -1721,10 +1703,8 @@ async function runSituation(){
   }catch(e){console.error('buildContext fail:',e&&e.message,e);document.getElementById(lid).outerHTML=`<div class="sit-res-card" style="border-left:4px solid var(--red)"><div class="res-body" style="color:var(--red)">⚠️ ${e.message}</div></div>`;btn.disabled=false;btn.textContent='Analyser →';}
 }
 
-const USERS={Assefa:'OCHA2026',Claude:'OCHA2026',Barry:'OCHA2026'};
-let _loginUser=null;
-function selectUser(name){_loginUser=name;document.getElementById('loginWho').textContent='Bonjour '+name+' — entrez le mot de passe';document.getElementById('loginBtns').style.display='none';document.getElementById('loginPwRow').style.display='flex';setTimeout(()=>document.getElementById('loginPw').focus(),50);}
-function checkLogin(){const pw=document.getElementById('loginPw').value;if(pw===USERS[_loginUser]){document.getElementById('loginOverlay').style.display='none';window._currentUser=_loginUser;}else{document.getElementById('loginErr').textContent='Mot de passe incorrect.';document.getElementById('loginPw').value='';document.getElementById('loginPw').focus();}}
+// Nom de l'utilisateur = adresse de connexion (auth.js), utilisé pour l'attribution des avis
+window._currentUser=(window.AUTH&&AUTH.email)||null;
 function selectRating(btn,lid,score,label){document.querySelectorAll('#fbz-'+lid+' .fb-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');const z=document.getElementById('fbz-'+lid);z.setAttribute('data-rating',score);z.setAttribute('data-label',label);document.getElementById('fbcr-'+lid).style.display='flex';}
 async function saveFeedback(lid){const z=document.getElementById('fbz-'+lid);const rating=parseInt(z.getAttribute('data-rating')||'0');const label=z.getAttribute('data-label')||'';const comment=(document.getElementById('fbcmt-'+lid)?.value||'').trim();const{question='',answer=''}=window._fbData?.[lid]||{};if(!rating)return;try{await fetch(SB+'/rest/v1/qa_feedback',{method:'POST',headers:{...H,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({question,answer,rating,rating_label:label,comment:comment||null,user_name:window._currentUser||'anonyme'})});z.innerHTML='<div class="fb-done">✓ Merci pour votre retour !</div>';}catch(e){toast('Erreur: '+e.message,'err');}}
 function copyTxt(btn){const el=btn.closest('.res-card,.sit-res-card').querySelector('.res-body');const raw=el.getAttribute('data-raw');const t=raw?decodeURIComponent(raw):el.textContent;navigator.clipboard.writeText(t).then(()=>{btn.textContent='✓ Copié!';setTimeout(()=>btn.textContent='Copier',2000);});}
