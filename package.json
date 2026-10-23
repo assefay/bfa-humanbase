@@ -1,0 +1,24 @@
+{
+  "name": "bfa_project",
+  "version": "1.0.0",
+  "description": "OCHA Burkina Faso Humanitarian Knowledge Base",
+  "main": "load_hpc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/assefay/bfa-humanbase.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/assefay/bfa-humanbase/issues"
+  },
+  "homepage": "https://github.com/assefay/bfa-humanbase#readme",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
