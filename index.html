@@ -1849,8 +1849,12 @@ window.qaReady = (async()=>{ await geoMapsReady; return true; })();
 // Question préremplie depuis le tableau de bord Direction (…/?q=…) : affichée dans le champ et lancée une fois connecté.
 // Gardée en sessionStorage pour survivre au rechargement de session ou au lien de connexion.
 (function(){
+  // localStorage (et non sessionStorage) : le lien de connexion reçu par e-mail s'ouvre dans un nouvel onglet
   let q = new URLSearchParams(location.search).get('q');
-  try { if (q) sessionStorage.setItem('hb_pending_q', q); else q = sessionStorage.getItem('hb_pending_q'); } catch (e) {}
+  try {
+    if (q) localStorage.setItem('hb_pending_q', JSON.stringify({ q, t: Date.now() }));
+    else { const p = JSON.parse(localStorage.getItem('hb_pending_q') || 'null'); if (p && Date.now() - p.t < 30 * 60000) q = p.q; }
+  } catch (e) {}
   if (!q) return;
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   const el = document.getElementById('qInput'); if (!el) return;
@@ -1858,7 +1862,7 @@ window.qaReady = (async()=>{ await geoMapsReady; return true; })();
   el.value = q; window._qval = q;
   (async () => {
     if (window.AUTH && AUTH.ready && !(await AUTH.ready)) return;      // pas connecté : la question reste en attente
-    try { sessionStorage.removeItem('hb_pending_q'); } catch (e) {}
+    try { localStorage.removeItem('hb_pending_q'); } catch (e) {}
     await (geoMapsReady || Promise.resolve());
     showTab('query'); el.scrollIntoView({ block: 'start' });
     runQuery();
