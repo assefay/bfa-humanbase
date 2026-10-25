@@ -1854,12 +1854,13 @@ window.qaReady = (async()=>{ await geoMapsReady; return true; })();
   if (!q) return;
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   const el = document.getElementById('qInput'); if (!el) return;
+  showTab('query');                                   // la question s'exécute dans l'onglet « Analyse IA » : l'ouvrir
   el.value = q; window._qval = q;
   (async () => {
     if (window.AUTH && AUTH.ready && !(await AUTH.ready)) return;      // pas connecté : la question reste en attente
     try { sessionStorage.removeItem('hb_pending_q'); } catch (e) {}
     await (geoMapsReady || Promise.resolve());
-    el.scrollIntoView({ block: 'center' });
+    showTab('query'); el.scrollIntoView({ block: 'start' });
     runQuery();
   })();
 })();
