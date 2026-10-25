@@ -21,6 +21,10 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 .mock{background:var(--amber-50);color:var(--amber);border-radius:16px;padding:4px 12px;font-size:12px;font-weight:600}
 nav a{color:var(--mut);text-decoration:none;padding:6px 10px;border-radius:8px;font-weight:500}
 nav a:hover{background:var(--blue-50);color:var(--blue)}
+nav a.on{background:var(--blue);color:#fff}
+nav a.ask{border:1px solid var(--blue);color:var(--blue);margin-left:6px}
+section{display:none} section.on{display:block}
+h2{margin-top:6px}
 main{max-width:1180px;margin:0 auto;padding:16px 16px 80px}
 .fresh{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mut);margin:0 0 18px}
 .fresh b{color:var(--ink);font-weight:500}
@@ -81,7 +85,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
   <div class="brand"><small>OCHA BURKINA FASO · HUMANBASE</small><b>Tableau de bord — Direction</b></div>
   <span class="mock">Maquette · données au 25 octobre 2026</span>
   <span class="sp"></span>
-  <nav><a href="#faits">Faits marquants</a><a href="#situation">Situation</a><a href="#deplacements">Déplacements</a><a href="#acces">Accès</a><a href="#reponse">Réponse</a><a href="#financement">Financement</a><a href="#medias">Médias</a><a href="../">Poser une question →</a></nav>
+  <nav id="tabs"><a href="#faits">Faits marquants</a><a href="#situation">Situation</a><a href="#deplacements">Déplacements</a><a href="#acces">Accès</a><a href="#reponse">Réponse</a><a href="#financement">Financement</a><a href="#medias">Médias</a><a href="#regional">Régional</a><a class="ask" href="../" target="_blank" rel="noopener">Poser une question ↗</a></nav>
 </div></header>
 
 <main id="main">
@@ -109,7 +113,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
     <span class="v" style="margin-top:10px">8 112 déplacés</span><span class="l">nouveaux déplacements estimés (500 la semaine précédente)</span></div>
     <span class="src">weekly_reports 12–18 oct. vs 5–11 oct.</span></div>
 </div>
-<div class="acts"><a class="btn" href="../">Demander : « Que s'est-il passé cette semaine dans le Sourou ? »</a><a class="btn" href="../">Voir le rapport hebdo complet</a></div>
+<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Que s'est-il passé cette semaine dans le Sourou ? »</a><a class="btn" href="../" target="_blank" rel="noopener">Voir le rapport hebdo complet</a></div>
 
 <!-- 2. SITUATION -->
 <h2 id="situation">2 · Situation sécuritaire <small>zones qui se dégradent, incidents, victimes</small></h2>
@@ -123,7 +127,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
 </div>
 <details class="card" style="margin-top:12px"><summary>Veille des zones qui se dégradent — à construire (3 signaux : fréquence, létalité, persistance)</summary>
   <div class="det"><p>Sera calculée uniquement sur des mois clos, OCHA et ACLED séparés, avec un seuil de volume minimal. Exemple du test de septembre : le Séno gardait un nombre d'incidents stable (28 → 29) mais la létalité quadruplait (24 → 95 morts) — invisible à la lecture hebdomadaire.</p></div></details>
-<div class="acts"><a class="btn" href="../">Demander : « Situation et incidents dans le Liptako depuis septembre »</a><a class="btn" href="../">« Attaques de drones en 2026 »</a></div>
+<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Situation et incidents dans le Liptako depuis septembre »</a><a class="btn" href="../" target="_blank" rel="noopener">« Attaques de drones en 2026 »</a></div>
 
 <!-- 3. DÉPLACEMENTS -->
 <h2 id="deplacements">3 · Déplacements <small>alertes GCORR validées</small></h2>
@@ -135,7 +139,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
     <span class="src">gcorr_alerts, arrivées depuis le 1er octobre</span>
     <details><summary>Stock de population (HPC 2026)</summary><div class="det"><table><tr><td>PDI</td><td class="n">1 294 232</td></tr><tr><td>Retournés</td><td class="n">1 097 622</td></tr><tr><td>Réfugiés (caseload autonome)</td><td class="n">41 979</td></tr></table></div></details></div>
 </div>
-<div class="acts"><a class="btn" href="../">Demander : « Déplacements dans le Sourou en 2026 »</a><a class="btn" href="../">« D'où viennent les déplacés arrivés à Ouahigouya ? »</a></div>
+<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Déplacements dans le Sourou en 2026 »</a><a class="btn" href="../" target="_blank" rel="noopener">« D'où viennent les déplacés arrivés à Ouahigouya ? »</a></div>
 
 <!-- 4. ACCÈS -->
 <h2 id="acces">4 · Accès humanitaire <small>zones enclavées · convois · UNHAS · perception des partenaires</small></h2>
@@ -153,7 +157,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
   <div class="card"><h3 style="font-size:13px;color:var(--mut)">Cohérence des quatre lectures de l'accès</h3>
     <p>Perception des partenaires, zones enclavées, convois et UNHAS décrivent la même réalité. 8 communes classées « accessibles sans convoi » sont perçues comme à contraintes élevées, et 5 contiennent une localité enclavée — fichier de vérification envoyé à l'équipe accès le 23 octobre.</p>
     <span class="src">v_acces_logistique_commune_2026, colonne alerte_coherence</span>
-    <div class="acts"><a class="btn" href="../">Demander : « Situation des convois humanitaires »</a><a class="btn" href="../">« Accès aérien UNHAS vers Djibo »</a></div></div>
+    <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Situation des convois humanitaires »</a><a class="btn" href="../" target="_blank" rel="noopener">« Accès aérien UNHAS vers Djibo »</a></div></div>
 </div>
 
 <!-- 5. RÉPONSE -->
@@ -161,7 +165,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
 <div class="grid g2">
   <div class="card"><div class="kpi"><span class="v">1,11 M</span><span class="l">personnes atteintes sur 2,65 M ciblées — <b>41,7 %</b> de la cible à fin août (67 % de l'année écoulée)</span><span class="d">PIN 2026 : 4,47 M · cible : 2,65 M (59 %)</span></div>
     <span class="src">v_cluster_coverage national, dernier mois rapporté : août 2026</span>
-    <div class="acts"><a class="btn" href="../">Demander : « Couverture par cluster dans les provinces en sévérité 4 »</a><a class="btn" href="../">« Qui fait quoi dans le Sourou ? »</a></div></div>
+    <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Couverture par cluster dans les provinces en sévérité 4 »</a><a class="btn" href="../" target="_blank" rel="noopener">« Qui fait quoi dans le Sourou ? »</a></div></div>
   <div class="card"><h3 style="font-size:13px;color:var(--mut)">Couverture de la cible par cluster</h3><div id="hCov"></div><span class="src">v_cluster_coverage — rouge &lt; 25 %, orange &lt; 40 %</span></div>
 </div>
 
@@ -180,7 +184,7 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
     <div class="c"><div class="v">≈ 50 %</div><div class="l"><b>Niger</b> · 192 M / 383 M US$<br>page OCHA Niger, date non précisée <span class="tag amb">à confirmer</span></div></div>
   </div>
   <p class="note">Maquette : Mali et Niger lus sur des pages publiques OCHA le 25 octobre, pas encore dans la base. La version finale lira les trois pays directement sur FTS, à la même date, chaque quinzaine. Note : la page publique OCHA affiche pour le Burkina 607,9 M requis / 147,4 M reçus (date non précisée) — écart avec notre export FTS du 30 sept. à vérifier (révision du plan ?).</p>
-  <div class="acts"><a class="btn" href="../">Demander : « Prépare la mise à jour FTS de la quinzaine »</a><a class="btn" href="../">« Évolution du financement 2025 vs 2026 par mois »</a></div></div>
+  <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Prépare la mise à jour FTS de la quinzaine »</a><a class="btn" href="../" target="_blank" rel="noopener">« Évolution du financement 2025 vs 2026 par mois »</a></div></div>
 
 <!-- 7. MÉDIAS -->
 <h2 id="medias">7 · Ce que dit la presse <small>sélection de l'équipe PI — semaine du 24 au 30 octobre</small></h2>
@@ -194,10 +198,10 @@ footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:v
     <li><a href="#" target="_blank">Recul de la liberté de la presse : jusqu'à 30 ans de prison pour des délits de presse</a> <span class="m">— RSF, 22 oct.</span></li>
   </ul>
   <span class="src">v_media_retenus (articles retenus par PI) — repli sur le tri automatique tant que PI n'a rien validé</span>
-  <div class="acts"><a class="btn" href="../medias/">Ouvrir le monitoring médias</a><a class="btn" href="../">Demander : « Que dit la presse sur les convois ? »</a></div>
+  <div class="acts"><a class="btn" href="../medias/">Ouvrir le monitoring médias</a><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Que dit la presse sur les convois ? »</a></div>
 </div>
 
-<h2>Onglet 2 (à venir) · Régional <small>sécurité ACLED Niger / Mali · mouvements transfrontaliers (HCR) · comparaison des financements</small></h2>
+<h2 id="regional">Régional (à venir) <small>sécurité ACLED Niger / Mali · mouvements transfrontaliers (HCR) · comparaison des financements</small></h2>
 <p class="note">Prévu dans l'ordre convenu : comparaison FTS (facile, ci-dessus) → ACLED Niger/Mali → HCR transfrontalier.</p>
 </main>
 <footer>Maquette du 25 octobre 2026 · toutes les valeurs proviennent de la base HumanBase sauf mention « web » · chaque bloc aura un niveau de détail précalculé et un bouton « Demander » qui ouvre l'assistant avec la question préremplie.</footer>
@@ -237,6 +241,24 @@ hbars('hZones', D.zones, r => n0(r[1]) + ' <span style="color:var(--light);font-
 hbars('hCov', D.cov, r => r[1].toLocaleString('fr-FR') + ' %', v => v < 25 ? 'low' : v < 40 ? 'mid' : '');
 hbars('hFts', D.fts, r => r[1].toLocaleString('fr-FR') + ' %', v => v < 10 ? 'low' : v < 20 ? 'mid' : '');
 hbars('hBail', D.bail, r => r[1].toLocaleString('fr-FR') + ' M <span style="color:var(--light);font-weight:400">· ' + r[2] + ' %</span>');
+// Une page par onglet : chaque bloc (h2 et ce qui le suit) devient une section
+(() => {
+  const main = document.getElementById('main'); const nodes = [...main.childNodes]; let sec = null;
+  nodes.forEach(n => {
+    if (n.nodeType === 1 && n.tagName === 'H2') { sec = document.createElement('section'); sec.id = 'tab-' + n.id; main.appendChild(sec); }
+    if (sec && !(n.nodeType === 1 && n.classList && n.classList.contains('fresh'))) sec.appendChild(n);
+  });
+  const links = [...document.querySelectorAll('#tabs a:not(.ask)')];
+  function show(id) {
+    document.querySelectorAll('section').forEach(x => x.classList.toggle('on', x.id === 'tab-' + id));
+    links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id));
+    try { localStorage.setItem('dir_tab', id); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  links.forEach(a => a.onclick = e => { e.preventDefault(); show(a.getAttribute('href').slice(1)); history.replaceState(null, '', a.getAttribute('href')); });
+  let first = location.hash.slice(1); try { first = first || localStorage.getItem('dir_tab'); } catch (e) {}
+  show(document.getElementById('tab-' + first) ? first : 'faits');
+})();
 (async () => { if (!(await AUTH.ready)) document.getElementById('main').style.display = 'none'; else AUTH.log && AUTH.log('direction_open', 'maquette'); })();
 </script>
 </body>
