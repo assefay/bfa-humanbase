@@ -9,257 +9,293 @@
 <script>window.AUTH_TITLE = 'HumanBase — Direction';</script>
 <script src="../auth.js"></script>
 <style>
-:root{--blue:#026CB6;--blue-700:#025A99;--blue-100:#D6E7F5;--blue-50:#EEF5FB;--ink:#0F1923;--mut:#4A6070;--light:#8A99A8;--line:#E2E8F0;--bg:#F4F7FA;
+:root{--blue:#026CB6;--blue-100:#D6E7F5;--blue-50:#EEF5FB;--ink:#0F1923;--mut:#4A6070;--light:#8A99A8;--line:#E2E8F0;--bg:#F4F7FA;
  --red:#B3261E;--red-50:#FCEBEA;--amber:#8A5A00;--amber-50:#FFF4DC;--green:#2E7D32;--green-50:#E8F5E9}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'DM Sans','Segoe UI',sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'DM Sans','Segoe UI',sans-serif}
 header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
-.bar{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px}
+.bar{max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
 .brand small{display:block;color:var(--blue);font-weight:600;letter-spacing:.04em;font-size:11px}
 .brand b{font-size:19px}
 .bar .sp{flex:1}
-.mock{background:var(--amber-50);color:var(--amber);border-radius:16px;padding:4px 12px;font-size:12px;font-weight:600}
-nav a{color:var(--mut);text-decoration:none;padding:6px 10px;border-radius:8px;font-weight:500}
+nav{display:flex;flex-wrap:wrap;gap:2px}
+nav a{color:var(--mut);text-decoration:none;padding:7px 11px;border-radius:8px;font-weight:500;font-size:14px}
 nav a:hover{background:var(--blue-50);color:var(--blue)}
 nav a.on{background:var(--blue);color:#fff}
 nav a.ask{border:1px solid var(--blue);color:var(--blue);margin-left:6px}
-section{display:none} section.on{display:block}
-h2{margin-top:6px}
-main{max-width:1180px;margin:0 auto;padding:16px 16px 80px}
-.fresh{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mut);margin:0 0 18px}
-.fresh b{color:var(--ink);font-weight:500}
-.fresh .late{color:var(--amber)}
-h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);margin:26px 0 10px;font-weight:700;display:flex;align-items:baseline;gap:10px}
-h2 small{text-transform:none;letter-spacing:0;font-weight:400;color:var(--light);font-size:12px}
-.grid{display:grid;gap:12px}
-.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.card.sev{border-left:4px solid var(--red)} .card.warn{border-left:4px solid #C98A00} .card.ok{border-left:4px solid var(--green)}
-.card h3{margin:0 0 6px;font-size:15px;font-weight:600;line-height:1.3}
-.card p{margin:0;color:#24323F}
-.src{display:block;margin-top:8px;font-size:11.5px;color:var(--light)}
-.kpi{display:flex;flex-direction:column;gap:2px}
-.kpi .v{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
-.kpi .l{color:var(--mut);font-size:13px}
-.kpi .d{font-size:12.5px;margin-top:4px}
-.up{color:var(--red)} .down{color:var(--green)} .flat{color:var(--mut)}
-.bars{display:flex;align-items:flex-end;gap:3px;height:56px;margin:10px 0 2px}
+.period{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--mut)}
+.period select,.period input{font:inherit;border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;color:var(--ink)}
+main{max-width:1200px;margin:0 auto;padding:14px 16px 80px}
+.fresh{font-size:12.5px;color:var(--mut);margin:0 0 14px;line-height:1.7}
+.fresh b{color:var(--ink);font-weight:500}.fresh .late{color:var(--amber);font-weight:600}
+section{display:none}section.on{display:block}
+h2{font-size:20px;margin:4px 0 4px;font-weight:700}
+.sub{color:var(--mut);margin:0 0 14px;font-size:14px}
+h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);margin:22px 0 10px;font-weight:700}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card.sev{border-left:5px solid var(--red)}.card.warn{border-left:5px solid #C98A00}.card.ok{border-left:5px solid var(--green)}
+.card h4{margin:0 0 6px;font-size:16px;font-weight:600;line-height:1.35}
+.card p{margin:0 0 4px;color:#24323F}
+.src{display:block;margin-top:8px;font-size:12px;color:var(--light)}
+/* tiles : libellé d'abord, puis le chiffre, puis une ligne de contexte lisible */
+.tile .l{font-size:15px;font-weight:600;color:var(--ink);line-height:1.3}
+.tile .v{font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.15;margin:4px 0 2px}
+.tile .v small{font-size:16px;font-weight:500;color:var(--mut)}
+.tile .c{font-size:14px;color:#24323F}
+.up{color:var(--red);font-weight:600}.down{color:var(--green);font-weight:600}.flat{color:var(--mut)}
+.tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:9px;background:#F1F4F8;color:var(--mut);margin-left:6px;vertical-align:middle;font-weight:500}
+.tag.red{background:var(--red-50);color:var(--red)}.tag.amb{background:var(--amber-50);color:var(--amber)}.tag.grn{background:var(--green-50);color:var(--green)}.tag.blue{background:var(--blue-50);color:var(--blue)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:60px;margin:10px 0 2px}
 .bars div{flex:1;background:var(--blue);border-radius:3px 3px 0 0;min-height:2px;position:relative}
 .bars div.cur{background:var(--blue-100);outline:1px dashed var(--blue)}
-.bars div:hover::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:11px;padding:3px 7px;border-radius:5px;white-space:nowrap;margin-bottom:4px}
-.axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--light)}
-.hbar{display:grid;grid-template-columns:150px 1fr 54px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
-.hbar .t{height:10px;background:var(--blue-50);border-radius:5px;overflow:hidden}
-.hbar .t i{display:block;height:100%;background:var(--blue);border-radius:5px}
-.hbar .t i.low{background:var(--red)} .hbar .t i.mid{background:#C98A00}
-.hbar .n{text-align:right;font-weight:600}
-.hbar .lab{color:#24323F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mut);font-weight:600;font-size:12px}
-td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit;font-size:13px;font-weight:500;color:var(--blue);text-decoration:none}
+.bars div:hover::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:11px;padding:3px 7px;border-radius:5px;white-space:nowrap;margin-bottom:4px;z-index:2}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--light)}
+.hbar{display:grid;grid-template-columns:150px 1fr 96px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.hbar .t{height:11px;background:var(--blue-50);border-radius:6px;overflow:hidden}.hbar .t i{display:block;height:100%;background:var(--blue);border-radius:6px}
+.hbar .t i.low{background:var(--red)}.hbar .t i.mid{background:#C98A00}
+.hbar .n{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.hbar .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12.5px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:500;color:var(--blue);text-decoration:none}
 .btn:hover{background:var(--blue-50)}
-details{margin-top:10px}
-summary{cursor:pointer;color:var(--blue);font-weight:500;font-size:13px;list-style:none}
-summary::before{content:'▸ ';font-size:11px} details[open] summary::before{content:'▾ '}
+details{margin-top:10px}summary{cursor:pointer;color:var(--blue);font-weight:500;font-size:14px;list-style:none}
+summary::before{content:'▸ ';font-size:11px}details[open] summary::before{content:'▾ '}
 .det{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
-.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:#F1F4F8;color:var(--mut);margin-left:6px;vertical-align:middle}
-.tag.red{background:var(--red-50);color:var(--red)} .tag.amb{background:var(--amber-50);color:var(--amber)} .tag.grn{background:var(--green-50);color:var(--green)}
-.cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cmp .c{border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center}
-.cmp .c.me{border-color:var(--blue);background:var(--blue-50)}
-.cmp .v{font-size:26px;font-weight:700}
-.cmp .l{font-size:12px;color:var(--mut)}
-.note{font-size:12.5px;color:var(--mut);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin-top:12px}
-.media li{margin:0 0 8px} .media a{color:var(--ink);font-weight:500;text-decoration:none} .media a:hover{color:var(--blue)}
-.media .m{color:var(--light);font-size:12px}
-footer{max-width:1180px;margin:30px auto 0;padding:0 16px;font-size:12px;color:var(--light)}
+.ev{padding:10px 0;border-bottom:1px solid var(--line)}.ev:last-child{border:0}
+.ev b{font-size:15px}.ev .m{color:var(--mut);font-size:13px}.ev p{margin:4px 0 0;color:#24323F}
+.empty{color:var(--mut);background:#fff;border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+.cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.cmp .c{border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}.cmp .c.me{border-color:var(--blue);background:var(--blue-50)}.cmp .v{font-size:28px;font-weight:700}.cmp .l{font-size:13px;color:var(--mut)}
+.note{font-size:13px;color:var(--mut);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin-top:12px}
+.media li{margin:0 0 10px}.media a{color:var(--ink);font-weight:600;text-decoration:none;font-size:15px}.media a:hover{color:var(--blue)}.media .m{color:var(--light);font-size:13px}
+#loading{position:fixed;inset:0;background:rgba(244,247,250,.85);display:flex;align-items:center;justify-content:center;z-index:20;color:var(--mut);font-size:15px}
 @media (max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:620px){.g3,.g2,.g4,.cmp{grid-template-columns:1fr}.hbar{grid-template-columns:110px 1fr 50px}}
+@media (max-width:620px){.g3,.g2,.g4,.cmp{grid-template-columns:1fr}.hbar{grid-template-columns:110px 1fr 54px}.tile .v{font-size:28px}}
 </style>
 </head>
 <body>
 <header><div class="bar">
   <div class="brand"><small>OCHA BURKINA FASO · HUMANBASE</small><b>Tableau de bord — Direction</b></div>
-  <span class="mock">Maquette · données au 25 octobre 2026</span>
-  <span class="sp"></span>
-  <nav id="tabs"><a href="#faits">Faits marquants</a><a href="#situation">Situation</a><a href="#deplacements">Déplacements</a><a href="#acces">Accès</a><a href="#reponse">Réponse</a><a href="#financement">Financement</a><a href="#medias">Médias</a><a href="#regional">Régional</a><a class="ask" href="../" target="_blank" rel="noopener">Poser une question ↗</a></nav>
-</div></header>
-
-<main id="main">
-<p class="fresh"><b>Dernières données :</b> rapport hebdo <b>12–18 oct.</b> · Daily Update <b>20 oct.</b> (derniers faits datés du 12) · incidents terrain OCHA <b>16 oct.</b> · ACLED <b>synchronisé le 23 oct.</b> (publié jusqu’au 16) · GCORR <b>synchronisé ce matin</b> (dernière alerte du 19 oct.) · zones enclavées <b class="late">11 sept.</b> · convois <b class="late">19 sept.</b> · réponse (atteints) <b class="late">août</b> · UNHAS <b>sept.</b> · FTS <b>30 sept.</b></p>
-
-<!-- 1. FAITS MARQUANTS -->
-<h2 id="faits">1 · Faits marquants <small>semaine du 12 au 18 octobre 2026 — tirés du rapport hebdomadaire et des Daily Updates</small></h2>
-<div class="grid g2">
-  <div class="card sev"><h3>Sourou : 7 600 personnes déplacées en une semaine après les attaques de Doumbala et Djibasso</h3>
-    <p>Attaque de Wanzan (Doumbala) le 16 octobre : au moins 1 tué, 1 blessé, habitations et greniers détruits ; 2 177 personnes déplacées vers Nouna. Alerte 787 : 5 424 personnes (surtout des enfants) arrivées à Djibasso après les attaques du 8 octobre.</p>
-    <span class="src">Rapport hebdo Sourou · Daily Update 12 oct. · GCORR alertes 784, 787</span></div>
-  <div class="card sev"><h3>Koulsé : six civils tués, sept personnes enlevées, télécommunications sabotées</h3>
-    <p>Une dizaine d'attaques, surtout contre des positions FDS/VDP. Sabotage d'installations internet (Soubeira) et de pylônes (Mokin-Yarcé), pillage sur le site aurifère de Soaga, bétail emporté à Pissila ; drone kamikaze contre un dépôt de carburant à Pensa.</p>
-    <span class="src">Rapport hebdo Koulsé · incidents terrain OCHA (12 oct.)</span></div>
-  <div class="card warn"><h3>Yaadga : 1 011 personnes de Gomboro arrivées à Ouahigouya et Zogoré ; un VDP tué à Dambatao (Sollé)</h3>
-    <p>Alerte 788 : 277 ménages venus du Sourou, qui s'ajoutent aux 500 comptés la semaine précédente. Le 8 octobre, trois civils tués dans leurs champs à Séguénéga (Sitogo et Goubré).</p>
-    <span class="src">Rapport hebdo Yaadga · Daily Update 8 oct. · GCORR alerte 788</span></div>
-  <div class="card warn"><h3>Liptako : affrontements JNIM–EIGS dans l'Oudalan ; un notable enlevé à Goulgountou</h3>
-    <p>Intensification depuis fin septembre, avec un impact probable sur la mobilité des civils et l'accès humanitaire. Deux jours de circulation sécurisée Kaya–Dori (20–21 oct.) pour préparer le convoi Dori–Sebba.</p>
-    <span class="src">Rapport hebdo Liptako</span></div>
-  <div class="card ok"><h3>Accès : Manni ravitaillée par convoi le 15 octobre ; assistance alimentaire et nutritionnelle à Arbinda</h3>
-    <p>Goulmou : convoi sécurisé vers Manni. Soum : assistance à Arbinda, aucun incident rapporté. Nakambé : plusieurs tonnes de vivres incendiées à Naaba Rabogo (Sangha).</p>
-    <span class="src">Rapport hebdo Goulmou, Soum, Nakambé</span></div>
-  <div class="card"><div class="kpi"><span class="v">7 civils tués</span><span class="l">cette semaine dans les rapports hebdo (8 la semaine précédente)</span>
-    <span class="v" style="margin-top:10px">8 112 déplacés</span><span class="l">nouveaux déplacements estimés (500 la semaine précédente)</span></div>
-    <span class="src">weekly_reports 12–18 oct. vs 5–11 oct.</span></div>
-</div>
-<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Que s'est-il passé cette semaine dans le Sourou ? »</a><a class="btn" href="../" target="_blank" rel="noopener">Voir le rapport hebdo complet</a></div>
-
-<!-- 2. SITUATION -->
-<h2 id="situation">2 · Situation sécuritaire <small>zones qui se dégradent, incidents, victimes</small></h2>
-<div class="grid g3">
-  <div class="card"><div class="kpi"><span class="v">19</span><span class="l">incidents rapportés par les bureaux OCHA en octobre (au 16)</span><span class="d flat">29 en septembre · 51 en août — mois en cours, incomplet</span></div>
-    <div class="bars" id="bOcha"></div><div class="axis"><span>janv.</span><span>oct.</span></div><span class="src">ocha_field_incidents 2026, par mois</span></div>
-  <div class="card"><div class="kpi"><span class="v">15</span><span class="l">civils tués en octobre (au 16) selon les bureaux OCHA</span><span class="d down">22 en septembre · 40 en août · pic : 106 en mai</span></div>
-    <div class="bars" id="bTues"></div><div class="axis"><span>janv.</span><span>oct.</span></div><span class="src">ocha_field_incidents 2026 — civils tués par mois</span></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Régions les plus meurtrières en 2026 (ACLED, morts toutes catégories)</h3>
-    <div id="hAcled"></div><span class="src">v_acled_summary 2026 — ACLED publie avec retard : octobre incomplet</span></div>
-</div>
-<details class="card" style="margin-top:12px"><summary>Veille des zones qui se dégradent — à construire (3 signaux : fréquence, létalité, persistance)</summary>
-  <div class="det"><p>Sera calculée uniquement sur des mois clos, OCHA et ACLED séparés, avec un seuil de volume minimal. Exemple du test de septembre : le Séno gardait un nombre d'incidents stable (28 → 29) mais la létalité quadruplait (24 → 95 morts) — invisible à la lecture hebdomadaire.</p></div></details>
-<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Situation et incidents dans le Liptako depuis septembre »</a><a class="btn" href="../" target="_blank" rel="noopener">« Attaques de drones en 2026 »</a></div>
-
-<!-- 3. DÉPLACEMENTS -->
-<h2 id="deplacements">3 · Déplacements <small>alertes GCORR validées</small></h2>
-<div class="grid g3">
-  <div class="card"><div class="kpi"><span class="v">102 924</span><span class="l">personnes nouvellement déplacées en 2026 (50 alertes, au 17 oct.)</span><span class="d down">772 314 sur toute l'année 2025</span></div>
-    <div class="bars" id="bGcorr"></div><div class="axis"><span>janv.</span><span>oct.</span></div><span class="src">v_gcorr_summary national 2026, personnes par mois</span></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Régions d'arrivée en 2026</h3><div id="hGcorr"></div><span class="src">v_gcorr_summary région 2026</span></div>
-  <div class="card"><div class="kpi"><span class="v">8 612</span><span class="l">personnes déplacées en octobre (4 alertes, au 17)</span><span class="d up">Sourou : Djibasso 5 424 · Nouna 2 177 · Yaadga : Ouahigouya / Zogoré 1 011</span></div>
-    <span class="src">gcorr_alerts, arrivées depuis le 1er octobre</span>
-    <details><summary>Stock de population (HPC 2026)</summary><div class="det"><table><tr><td>PDI</td><td class="n">1 294 232</td></tr><tr><td>Retournés</td><td class="n">1 097 622</td></tr><tr><td>Réfugiés (caseload autonome)</td><td class="n">41 979</td></tr></table></div></details></div>
-</div>
-<div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Déplacements dans le Sourou en 2026 »</a><a class="btn" href="../" target="_blank" rel="noopener">« D'où viennent les déplacés arrivés à Ouahigouya ? »</a></div>
-
-<!-- 4. ACCÈS -->
-<h2 id="acces">4 · Accès humanitaire <small>zones enclavées · convois · UNHAS · perception des partenaires</small></h2>
-<div class="grid g4">
-  <div class="card"><div class="kpi"><span class="v">84</span><span class="l">localités difficiles d'accès, enclavées ou inaccessibles — 1,57 M de personnes dont 999 000 PDI</span>
-    <span class="d">35 localités inaccessibles (niv. 3, 206 000 pers.) · 40 enclavées (niv. 2, 968 000) · 9 difficiles (niv. 1, 393 000)</span></div><span class="src">zone_enclavees au 11 sept. 2026 <span class="tag amb">mise à jour attendue</span></span></div>
-  <div class="card"><div class="kpi"><span class="v">35</span><span class="l">communes où aucun convoi n'est possible (inaccessibles)</span><span class="d">9 communes à convoi régulier · 34 à convoi irrégulier · 273 accessibles sans convoi</span>
-    <span class="d" style="margin-top:6px">Les 15 provinces avec communes inaccessibles concentrent <b>65 % du PIN</b> (2,9 M) ; 40,7 % de leur cible atteinte.</span></div><span class="src">v_convoi_synthese · classification accès, oct. 2026 · dernier convoi chargé : 19 sept.</span></div>
-  <div class="card"><div class="kpi"><span class="v">858</span><span class="l">passagers UNHAS en septembre · 12,2 t de fret · 21 destinations</span><span class="d down">878 pax en août · 1 220 en juillet — baisse depuis mai</span></div>
-    <div class="bars" id="bUnhas"></div><div class="axis"><span>janv.</span><span>sept.</span></div><span class="src">v_unhas_mensuel 2026</span></div>
-  <div class="card"><div class="kpi"><span class="v">79</span><span class="l">communes sur 239 où les partenaires perçoivent des <b>contraintes élevées</b> (janv.–juin 2026)</span><span class="d up">76 au second semestre 2025 — stable, légère hausse</span></div><span class="src">access_perception, round « Jan-Jui 26 » — score moyen 1,88 (contraintes modérées)</span></div>
-</div>
-<div class="grid g2" style="margin-top:12px">
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Régions par population en localités enclavées ou inaccessibles (niv. 2 + 3)</h3><div id="hZones"></div><span class="src">v_zones_summary région, 11 sept. 2026</span></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Cohérence des quatre lectures de l'accès</h3>
-    <p>Perception des partenaires, zones enclavées, convois et UNHAS décrivent la même réalité. 8 communes classées « accessibles sans convoi » sont perçues comme à contraintes élevées, et 5 contiennent une localité enclavée — fichier de vérification envoyé à l'équipe accès le 23 octobre.</p>
-    <span class="src">v_acces_logistique_commune_2026, colonne alerte_coherence</span>
-    <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Situation des convois humanitaires »</a><a class="btn" href="../" target="_blank" rel="noopener">« Accès aérien UNHAS vers Djibo »</a></div></div>
-</div>
-
-<!-- 5. RÉPONSE -->
-<h2 id="reponse">5 · Réponse humanitaire <small>personnes atteintes janvier–août 2026 (monitoring intersectoriel)</small></h2>
-<div class="grid g2">
-  <div class="card"><div class="kpi"><span class="v">1,11 M</span><span class="l">personnes atteintes sur 2,65 M ciblées — <b>41,7 %</b> de la cible à fin août (67 % de l'année écoulée)</span><span class="d">PIN 2026 : 4,47 M · cible : 2,65 M (59 %)</span></div>
-    <span class="src">v_cluster_coverage national, dernier mois rapporté : août 2026</span>
-    <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Couverture par cluster dans les provinces en sévérité 4 »</a><a class="btn" href="../" target="_blank" rel="noopener">« Qui fait quoi dans le Sourou ? »</a></div></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Couverture de la cible par cluster</h3><div id="hCov"></div><span class="src">v_cluster_coverage — rouge &lt; 25 %, orange &lt; 40 %</span></div>
-</div>
-
-<!-- 6. FINANCEMENT -->
-<h2 id="financement">6 · Financement du plan 2026 <small>FTS au 30 septembre 2026 — base de la mise à jour bimensuelle</small></h2>
-<div class="grid g3">
-  <div class="card"><div class="kpi"><span class="v">18,9 %</span><span class="l">du HNRP 2026 financé : 124,3 M US$ reçus sur 658,5 M requis · déficit 534,1 M</span><span class="d up">À la même date en 2025 : 174,1 M reçus (−23 % cette année)</span></div>
-    <div class="bars" id="bFts"></div><div class="axis"><span>févr.</span><span>sept. (cumul 2026 en bleu, 2025 en gris clair)</span></div><span class="src">v_fts_couverture_nationale · v_fts_comparaison_annuelle</span></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Clusters les moins financés</h3><div id="hFts"></div><span class="src">v_fts_couverture 2026 (export FTS par cluster)</span></div>
-  <div class="card"><h3 style="font-size:13px;color:var(--mut)">Principaux bailleurs 2026</h3><div id="hBail"></div><span class="src">v_fts_bailleurs 2026 — 11 clusters, 41 % du total pour ECHO + Allemagne</span></div>
-</div>
-<div class="card" style="margin-top:12px"><h3 style="font-size:13px;color:var(--mut)">Comparaison régionale — plans de réponse 2026</h3>
-  <div class="cmp">
-    <div class="c me"><div class="v">18,9 %</div><div class="l"><b>Burkina Faso</b> · 124 M / 658 M US$<br>FTS, 30 sept.</div></div>
-    <div class="c"><div class="v">23 %</div><div class="l"><b>Mali</b> · 136 M / 578 M US$<br>OCHA Mali, 28 sept. <span class="tag amb">web</span></div></div>
-    <div class="c"><div class="v">≈ 50 %</div><div class="l"><b>Niger</b> · 192 M / 383 M US$<br>page OCHA Niger, date non précisée <span class="tag amb">à confirmer</span></div></div>
+  <div class="period">Période :
+    <select id="preset"><option value="week">Semaine dernière (rapport hebdo)</option><option value="7">7 derniers jours</option><option value="30">30 derniers jours</option><option value="ytd">Depuis le 1er janvier</option><option value="custom">Personnalisée</option></select>
+    <span id="customRange" style="display:none"><input type="date" id="dFrom"> → <input type="date" id="dTo"> <button class="btn" id="goRange">OK</button></span>
+    <b id="periodLabel" style="color:var(--ink)"></b>
   </div>
-  <p class="note">Maquette : Mali et Niger lus sur des pages publiques OCHA le 25 octobre, pas encore dans la base. La version finale lira les trois pays directement sur FTS, à la même date, chaque quinzaine. Note : la page publique OCHA affiche pour le Burkina 607,9 M requis / 147,4 M reçus (date non précisée) — écart avec notre export FTS du 30 sept. à vérifier (révision du plan ?).</p>
-  <div class="acts"><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Prépare la mise à jour FTS de la quinzaine »</a><a class="btn" href="../" target="_blank" rel="noopener">« Évolution du financement 2025 vs 2026 par mois »</a></div></div>
-
-<!-- 7. MÉDIAS -->
-<h2 id="medias">7 · Ce que dit la presse <small>sélection de l'équipe PI — semaine du 24 au 30 octobre</small></h2>
-<div class="card">
-  <p class="note" style="margin:0 0 12px">Aucun article encore validé par PI (l'application de tri démarre cette semaine). En attendant, les 5 histoires jugées les plus importantes par le tri automatique :</p>
-  <ul class="media" style="margin:0;padding-left:18px">
-    <li><a href="https://lefaso.net/spip.php?article150129" target="_blank">Les principales innovations du nouveau Code pénal</a> <span class="m">— LeFaso.net, 22 oct.</span><br>Rétablissement de la peine de mort pour certaines infractions, sanctions révisées pour détournement de deniers publics, nouvelles infractions numériques et environnementales.</li>
-    <li><a href="https://lefaso.net/spip.php?article150149" target="_blank">L'énergie pour tous d'ici 2030</a> <span class="m">— LeFaso.net, 22 oct.</span><br>Initiative présidentielle « Faso Wa-Fulu », plus de 2 800 milliards FCFA sur dix ans.</li>
-    <li><a href="#" target="_blank">L'AES et la CEDEAO entament leur « processus de réconciliation »</a> <span class="m">— Courrier international, 23 oct.</span><br>Les deux blocs prévoient de renouer des accords de coopération économique et sécuritaire après la rencontre de Dakar.</li>
-    <li><a href="#" target="_blank">L'exportation des farines de mil, de maïs et de sorgho suspendue</a> <span class="m">— Burkina24, 9 oct.</span><br>Mesure du ministère du Commerce pour garantir la disponibilité sur le marché intérieur.</li>
-    <li><a href="#" target="_blank">Recul de la liberté de la presse : jusqu'à 30 ans de prison pour des délits de presse</a> <span class="m">— RSF, 22 oct.</span></li>
-  </ul>
-  <span class="src">v_media_retenus (articles retenus par PI) — repli sur le tri automatique tant que PI n'a rien validé</span>
-  <div class="acts"><a class="btn" href="../medias/">Ouvrir le monitoring médias</a><a class="btn" href="../" target="_blank" rel="noopener">Demander : « Que dit la presse sur les convois ? »</a></div>
-</div>
-
-<h2 id="regional">Régional (à venir) <small>sécurité ACLED Niger / Mali · mouvements transfrontaliers (HCR) · comparaison des financements</small></h2>
-<p class="note">Prévu dans l'ordre convenu : comparaison FTS (facile, ci-dessus) → ACLED Niger/Mali → HCR transfrontalier.</p>
+  <span class="sp"></span>
+  <nav id="tabs"><a href="#faits">Faits marquants</a><a href="#incidents">Incidents sécuritaires</a><a href="#deplacements">Déplacements</a><a href="#acces">Accès</a><a href="#reponse">Réponse</a><a href="#financement">Financement</a><a href="#medias">Médias</a><a class="ask" href="../" target="_blank" rel="noopener">Poser une question ↗</a></nav>
+</div></header>
+<main id="main">
+  <p class="fresh" id="fresh"></p>
+  <section id="tab-faits"></section>
+  <section id="tab-incidents"></section>
+  <section id="tab-deplacements"></section>
+  <section id="tab-acces"></section>
+  <section id="tab-reponse"></section>
+  <section id="tab-financement"></section>
+  <section id="tab-medias"></section>
 </main>
-<footer>Maquette du 25 octobre 2026 · toutes les valeurs proviennent de la base HumanBase sauf mention « web » · chaque bloc aura un niveau de détail précalculé et un bouton « Demander » qui ouvre l'assistant avec la question préremplie.</footer>
+<div id="loading">Chargement des données…</div>
 
 <script>
-const D = {
- ocha: [47,44,67,46,41,48,53,51,29,19], tues: [75,54,101,55,106,49,59,40,22,15],
- gcorr: [15119,3109,16407,18613,14930,9925,2933,13006,270,8612],
- unhas: [1386,1303,1398,1351,1089,1156,1220,878,858],
- fts26: [58.3,59.6,84.4,94.5,105.5,118.2,121.5,133.3], fts25: [49.8,53.2,97.4,111.4,136.6,153.8,158.3,174.1],
- acled: [['Liptako',975,121],['Yaadga',447,188],['Sourou',332,140],['Soum',320,54],['Nakambé',310,91],['Goulmou',284,88],['Koulsé',236,175],['Sirba',231,62]],
- gcorrReg: [['Sourou',64310],['Yaadga',60008],['Bankui',30054],['Sirba',28362],['Koulsé',12228],['Nakambé',10886]],
- zones: [['Koulsé',339411,12],['Soum',335342,9],['Liptako',114378,11],['Tapoa',101028,9],['Sirba',83680,8],['Goulmou',81952,8],['Sourou',62306,10],['Yaadga',49938,7]],
- cov: [['WASH',16.5],['Abris/AME',20],['Protection',22.5],['Éducation',23.9],['GSAT',32.1],['Réfugiés',32.7],['Nutrition',49.5],['Sécurité alim.',49.6],['Santé',50.7]],
- fts: [['WASH',3.8,92.6],['GSAT',4.8,7.5],['Abris/AME',11.8,37.9],['Sécurité alim.',12.4,207.2],['Protection',19.7,103],['Éducation',21,38.6],['Santé',22.2,54],['Nutrition',23.1,40.5],['Réfugiés',25.2,47.2]],
- bail: [['ECHO (UE)',41.1,30.8],['Allemagne',12.9,9.7],['CERF',8.4,6.3],['Belgique',6.9,5.2],['Danemark',6.5,4.9],['Canada',6.4,4.8]],
-};
+'use strict';
+const SB = 'https://vshnatreclfntadwcyhy.supabase.co';
+const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const n0 = v => v == null ? '—' : Number(v).toLocaleString('fr-FR');
 const MO = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-const n0 = v => Number(v).toLocaleString('fr-FR');
-function bars(id, arr, unit, start=0, curLast=true) {
-  const m = Math.max(...arr); const el = document.getElementById(id);
-  el.innerHTML = arr.map((v,i) => `<div style="height:${Math.max(3, v/m*100)}%" class="${curLast && i===arr.length-1 ? 'cur' : ''}" data-t="${MO[start+i]} : ${n0(v)} ${unit}"></div>`).join('');
+const MOL = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const fd = d => { if (!d) return '—'; const x = new Date(d + (String(d).length === 10 ? 'T00:00:00' : '')); return x.getDate() + ' ' + MO[x.getMonth()]; };
+const fdl = d => { if (!d) return '—'; const x = new Date(d + (String(d).length === 10 ? 'T00:00:00' : '')); return x.getDate() + ' ' + MOL[x.getMonth()] + ' ' + x.getFullYear(); };
+const iso = d => d.toISOString().slice(0, 10);
+const ask = q => `<a class="btn" href="../?q=${encodeURIComponent(q)}" target="_blank" rel="noopener">Demander : « ${esc(q)} »</a>`;
+const delta = (cur, prev, inv) => { if (cur == null || prev == null) return ''; const d = cur - prev; if (!d) return '<span class="flat">= période précédente</span>';
+  const cls = (d > 0) !== !!inv ? 'up' : 'down'; return `<span class="${cls}">${d > 0 ? '▲ +' : '▼ '}${n0(d)}</span> <span class="flat">vs période précédente (${n0(prev)})</span>`; };
+const tile = (l, v, c, src, cls = '') => `<div class="card tile ${cls}"><div class="l">${l}</div><div class="v">${v}</div><div class="c">${c || ''}</div>${src ? `<span class="src">${src}</span>` : ''}</div>`;
+function bars(arr, key, unit, start = 0, curIdx = -1) { const m = Math.max(1, ...arr.map(a => +a[key] || 0));
+  return `<div class="bars">${arr.map((a, i) => `<div style="height:${Math.max(3, (+a[key] || 0) / m * 100)}%" class="${i === curIdx ? 'cur' : ''}" data-t="${MO[(a.mois || start + i + 1) - 1]} : ${n0(a[key])} ${unit}"></div>`).join('')}</div><div class="axis"><span>${MO[(arr[0]?.mois || 1) - 1]}</span><span>${MO[(arr[arr.length - 1]?.mois || 12) - 1]}</span></div>`; }
+function hbars(rows, lab, val, fmt, cls) { const m = Math.max(1, ...rows.map(r => +val(r) || 0));
+  return rows.map(r => `<div class="hbar"><span class="lab" title="${esc(lab(r))}">${esc(lab(r))}</span><span class="t"><i class="${cls ? cls(+val(r)) : ''}" style="width:${(+val(r) || 0) / m * 100}%"></i></span><span class="n">${fmt(r)}</span></div>`).join(''); }
+
+let D = null, P = { from: null, to: null };
+
+async function load() {
+  $('#loading').style.display = 'flex';
+  const body = P.from ? { p_from: P.from, p_to: P.to } : {};
+  const r = await fetch(SB + '/rest/v1/rpc/direction_dashboard', { method: 'POST', headers: { apikey: ANON, Authorization: 'Bearer ' + AUTH.token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { $('#loading').textContent = 'Erreur de chargement (' + r.status + ') : ' + (await r.text()).slice(0, 200); return; }
+  D = await r.json(); render(); $('#loading').style.display = 'none';
 }
-bars('bOcha', D.ocha, 'incidents'); bars('bTues', D.tues, 'civils tués'); bars('bGcorr', D.gcorr, 'personnes'); bars('bUnhas', D.unhas, 'passagers', 0, false);
-// FTS: two series (2026 blue, 2025 light), paired bars
-(() => { const el = document.getElementById('bFts'); const m = Math.max(...D.fts25);
-  el.style.gap = '6px';
-  el.innerHTML = D.fts26.map((v,i) => `<div style="display:flex;gap:2px;flex:1;height:100%;align-items:flex-end;background:none">
-    <div style="flex:1;height:${v/m*100}%" data-t="${MO[i+1]} 2026 : ${v} M US$"></div><div class="cur" style="flex:1;height:${D.fts25[i]/m*100}%;outline:0" data-t="${MO[i+1]} 2025 : ${D.fts25[i]} M US$"></div></div>`).join(''); })();
-function hbars(id, rows, fmt, cls) {
-  const m = Math.max(...rows.map(r => r[1]));
-  document.getElementById(id).innerHTML = rows.map(r => `<div class="hbar"><span class="lab" title="${r[0]}">${r[0]}</span><span class="t"><i class="${cls ? cls(r[1]) : ''}" style="width:${r[1]/m*100}%"></i></span><span class="n">${fmt(r)}</span></div>`).join('');
+
+function render() {
+  const m = D.meta; const partial = {};
+  $('#periodLabel').textContent = 'du ' + fdl(m.from) + ' au ' + fdl(m.to);
+  // ACLED / GCORR / rapport hebdo couvrent-ils la période ?
+  partial.acled = m.acled_sync?.max_event < m.to; partial.weekly = m.weekly_last < m.to; partial.ocha = m.ocha_inc_last < m.to; partial.gcorr = m.gcorr_sync?.max_diffusion < m.to;
+  const late = (d, days) => (new Date(m.to) - new Date(d)) / 864e5 > days;
+  $('#fresh').innerHTML = `<b>Dernières données —</b> rapport hebdo <b>${fd(m.weekly_last)}</b> · Daily Update <b>e-mail du ${fd(m.daily_last_email)}</b> · incidents terrain OCHA <b>${fd(m.ocha_inc_last)}</b> · ACLED <b>synchronisé le ${fd(m.acled_sync?.run_at)}</b> (publié jusqu'au ${fd(m.acled_sync?.max_event)}) · GCORR <b>synchronisé le ${fd(m.gcorr_sync?.run_at)}</b> (dernière alerte du ${fd(m.gcorr_sync?.max_diffusion)}) · zones enclavées <b class="${late(m.zones_last, 21) ? 'late' : ''}">${fd(m.zones_last)}</b> · convois <b class="${late(m.convois_last, 35) ? 'late' : ''}">${fd(m.convois_last)}</b> · UNHAS <b>${MOL[new Date(m.unhas_last).getMonth()]}</b> · réponse <b class="${late(new Date(2026, m.reached_last_month, 1), 45) ? 'late' : ''}">fin ${MOL[m.reached_last_month - 1]}</b> · FTS <b>${fd(m.fts_date)}</b>`;
+  renderFaits(partial); renderIncidents(partial); renderDeplacements(partial); renderAcces(); renderReponse(); renderFinancement(); renderMedias();
 }
-hbars('hAcled', D.acled, r => n0(r[1]) + ' <span style="color:var(--light);font-weight:400">· ' + r[2] + ' év.</span>');
-hbars('hGcorr', D.gcorrReg, r => n0(r[1]));
-hbars('hZones', D.zones, r => n0(r[1]) + ' <span style="color:var(--light);font-weight:400">· ' + r[2] + ' loc.</span>');
-hbars('hCov', D.cov, r => r[1].toLocaleString('fr-FR') + ' %', v => v < 25 ? 'low' : v < 40 ? 'mid' : '');
-hbars('hFts', D.fts, r => r[1].toLocaleString('fr-FR') + ' %', v => v < 10 ? 'low' : v < 20 ? 'mid' : '');
-hbars('hBail', D.bail, r => r[1].toLocaleString('fr-FR') + ' M <span style="color:var(--light);font-weight:400">· ' + r[2] + ' %</span>');
-// Une page par onglet : chaque bloc (h2 et ce qui le suit) devient une section
-(() => {
-  const main = document.getElementById('main'); const nodes = [...main.childNodes]; let sec = null;
-  nodes.forEach(n => {
-    if (n.nodeType === 1 && n.tagName === 'H2') { sec = document.createElement('section'); sec.id = 'tab-' + n.id; main.appendChild(sec); }
-    if (sec && !(n.nodeType === 1 && n.classList && n.classList.contains('fresh'))) sec.appendChild(n);
+
+// ---------- 1. FAITS MARQUANTS ----------
+function renderFaits(partial) {
+  const F = D.faits, m = D.meta; const weeks = F.weeks || [];
+  // cartes : une par région avec du contenu, triées par gravité (déjà triées côté base)
+  const cards = weeks.filter(w => w.ps && !/^aucun/i.test(w.ps)).map(w => {
+    const sev = (w.tues || 0) >= 3 || (w.dep || 0) >= 2000 ? 'sev' : (w.tues || 0) > 0 || (w.dep || 0) > 0 || /attaque|enlev|tué|drone/i.test(w.ps) ? 'warn' : '';
+    return `<div class="card ${sev}"><h4>${esc(w.region)} : ${esc(w.ps)}</h4><p>${esc(w.sec || '')}</p>${w.mvt && !/^aucun/i.test(w.mvt) ? `<p>${esc(w.mvt)}</p>` : ''}${w.acc ? `<p><i>Accès :</i> ${esc(w.acc)}</p>` : ''}<span class="src">Rapport hebdomadaire, semaine du ${fd(w.week_start)} au ${fd(w.week_end)}${w.tues ? ' · ' + w.tues + ' civil(s) tué(s)' : ''}${w.dep ? ' · ' + n0(w.dep) + ' déplacés estimés' : ''}</span></div>`;
   });
-  const links = [...document.querySelectorAll('#tabs a:not(.ask)')];
-  function show(id) {
-    document.querySelectorAll('section').forEach(x => x.classList.toggle('on', x.id === 'tab-' + id));
-    links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id));
-    try { localStorage.setItem('dir_tab', id); } catch (e) {}
-    window.scrollTo(0, 0);
-  }
-  links.forEach(a => a.onclick = e => { e.preventDefault(); show(a.getAttribute('href').slice(1)); history.replaceState(null, '', a.getAttribute('href')); });
+  const sr = F.since_report; const since = [];
+  (sr.gcorr || []).forEach(a => since.push(`<div class="ev"><b>${n0(a.pers)} personnes déplacées</b> arrivées à ${esc(a.com)} (${esc(a.reg)}) depuis ${esc(a.orig)} <span class="m">· GCORR, ${fd(a.d)}</span></div>`));
+  (sr.daily || []).forEach(a => since.push(`<div class="ev"><b>${esc(a.c.split(':')[0])}</b> <span class="m">· Daily Update, ${fd(a.d)}${a.reg ? ' · ' + esc(a.reg) : ''}</span><p>${esc(a.c.split(':').slice(1).join(':').trim())}</p></div>`));
+  (sr.acled || []).forEach(a => since.push(`<div class="ev"><b>${esc(a.type)} à ${esc(a.loc)} (${esc(a.prov)}, ${esc(a.reg)})${a.morts ? ' — ' + a.morts + ' mort(s)' : ''}</b> <span class="m">· ACLED, ${fd(a.d)}</span><p>${esc(a.notes)}</p></div>`));
+  (sr.ocha || []).forEach(a => since.push(`<div class="ev"><b>${esc(a.type)} : ${esc(a.loc || a.com)} (${esc(a.reg)})${a.tues ? ' — ' + a.tues + ' civil(s) tué(s)' : ''}</b> <span class="m">· terrain OCHA, ${fd(a.d)}</span><p>${esc(a.desc || '')}</p></div>`));
+  const t = F.tot || {}, tp = F.tot_prev || {};
+  $('#tab-faits').innerHTML = `<h2>Faits marquants</h2><p class="sub">Semaine${t.n_weeks > 1 ? 's' : ''} du rapport hebdomadaire couvrant la période, complétée par les Daily Updates${partial.weekly ? ' <span class="tag amb">rapport hebdo disponible jusqu\'au ' + fd(m.weekly_last) + '</span>' : ''}</p>
+    <div class="grid g3">${tile('Civils tués', n0(t.tues), delta(t.tues, tp.tues), 'Rapports hebdomadaires OCHA (sections régionales)')}
+      ${tile('Nouveaux déplacés estimés', n0(t.dep), delta(t.dep, tp.dep), 'Rapports hebdomadaires — estimations terrain, voir GCORR pour les chiffres validés')}
+      ${tile('Régions avec un fait marquant', cards.length, (F.daily || []).length + ' item(s) dans les Daily Updates', 'weekly_reports · daily_updates')}</div>
+    ${since.length && m.weekly_last <= m.to ? `<h3 class="sec">Depuis le dernier rapport hebdo (après le ${fd(m.weekly_last)})</h3><div class="card">${since.join('')}</div>` : ''}
+    <h3 class="sec">Par région</h3><div class="grid g2">${cards.join('') || '<div class="empty">Aucun rapport hebdomadaire sur cette période.</div>'}</div>
+    ${(F.daily || []).length ? `<details class="card"><summary>Daily Updates de la période (${F.daily.length})</summary><div class="det">${F.daily.map(a => `<div class="ev"><b>${esc(a.c.split(':')[0])}</b> <span class="m">· ${fd(a.d)}${a.reg ? ' · ' + esc(a.reg) : ''}</span><p>${esc(a.c.split(':').slice(1).join(':').trim())}</p>${a.action ? `<p><i>OCHA :</i> ${esc(a.action)}</p>` : ''}</div>`).join('')}</div></details>` : ''}
+    <div class="acts">${ask('Que s\'est-il passé cette semaine dans le ' + (cards[0] ? weeks.filter(w => w.ps && !/^aucun/i.test(w.ps))[0].region : 'Sahel') + ' ?')}${ask('Résume la situation humanitaire de la semaine')}</div>`;
+}
+
+// ---------- 2. INCIDENTS ----------
+function renderIncidents(partial) {
+  const I = D.incidents, m = D.meta;
+  const th = k => ({ O: I.themes.find(x => x.source === 'OCHA' && x.theme === k) || {}, A: I.themes.find(x => x.source === 'ACLED' && x.theme === k) || {} });
+  const T = [['tous', 'Tous incidents'], ['drone', 'Drones'], ['eei', 'EEI'], ['convoi', 'Attaques contre convois'], ['enlevement', 'Enlèvements'], ['humanitaires', 'Humanitaires ciblés'], ['pillage_betail', 'Pillage / bétail'], ['sante', 'Santé'], ['education', 'Éducation']];
+  const acledTag = partial.acled ? `<span class="tag amb" title="ACLED a publié jusqu'au ${fd(m.acled_sync?.max_event)}">partiel</span>` : '';
+  const tiles = T.map(([k, l]) => { const { O, A } = th(k);
+    return `<div class="card tile"><div class="l">${l}</div><div class="v">${n0(O.n || 0)} <small>OCHA</small> &nbsp; ${n0(A.n || 0)} <small>ACLED${acledTag}</small></div>
+      <div class="c">${(O.morts || A.morts) ? `${n0((O.morts || 0))} / ${n0(A.morts || 0)} morts · ` : ''}période précédente : ${n0(O.n_prev || 0)} / ${partial.acled ? '—' : n0(A.n_prev || 0)}</div></div>`; }).join('');
+  const maj = (I.majeurs || []).map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc)} (${esc(e.com || e.prov)}, ${esc(e.reg)}) : ${esc(e.type)}${e.morts ? ', ' + e.morts + ' mort(s)' : ''}</b>${(e.th || []).map(x => `<span class="tag red">${esc(x)}</span>`).join('')}<div class="m">${esc(e.a1)}${e.a2 ? ' → ' + esc(e.a2) : ''}${e.civ ? ' · ' + esc(e.civ) : ''}</div><p>${esc(e.notes)}</p></div>`).join('');
+  const ocha = (I.ocha_list || []).map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc || e.com || e.reg)} (${esc(e.reg)}) : ${esc(e.type)}${e.tues ? ', ' + e.tues + ' civil(s) tué(s)' : ''}${e.dep ? ', ' + n0(e.dep) + ' déplacés' : ''}</b><p>${esc(e.desc || '')}${e.hum ? ' <i>' + esc(e.hum) + '</i>' : ''}</p></div>`).join('');
+  const mo = I.mensuel || []; const mO = mo.filter(x => x.src === 'OCHA'), mA = mo.filter(x => x.src === 'ACLED');
+  const ct = I.civils_tues || {};
+  $('#tab-incidents').innerHTML = `<h2>Incidents sécuritaires</h2><p class="sub">Terrain OCHA et ACLED côte à côte, jamais additionnés${partial.acled ? ' — ACLED publié jusqu\'au ' + fd(m.acled_sync?.max_event) + ', donc partiel pour cette période' : ''}</p>
+    <div class="grid g3">${tile('Civils tués (terrain OCHA)', n0(ct.n || 0), delta(ct.n, ct.n_prev), 'ocha_field_incidents')}
+      ${tile('Morts toutes catégories (ACLED)', n0(th('tous').A.morts || 0) + (partial.acled ? ' <small>partiel</small>' : ''), partial.acled ? `<span class="flat">comparaison suspendue : ACLED publié jusqu'au ${fd(m.acled_sync?.max_event)}</span>` : delta(th('tous').A.morts, th('tous').A.morts_prev), 'acled_incidents — batailles, explosions, violences contre civils')}
+      ${tile('Régions les plus touchées (ACLED, période)', (I.acled_regions || []).slice(0, 3).map(r => esc(r.region)).join(', ') || '—', (I.acled_regions || []).slice(0, 3).map(r => `${esc(r.region)} : ${r.morts} morts / ${r.n} év.`).join(' · '), 'acled_incidents')}</div>
+    <h3 class="sec">Par thème — OCHA / ACLED</h3><div class="grid g3">${tiles}</div>
+    <h3 class="sec">Événements majeurs ACLED (≥ 5 morts, ou convoi / humanitaire / santé / éducation visés)</h3><div class="card">${maj || '<p class="flat">Aucun événement majeur publié par ACLED sur cette période.</p>'}</div>
+    <h3 class="sec">Incidents rapportés par les bureaux OCHA</h3><div class="card">${ocha || '<p class="flat">Aucun incident terrain sur cette période.</p>'}</div>
+    <div class="grid g2" style="margin-top:12px"><div class="card tile"><div class="l">Incidents terrain OCHA par mois (${new Date(m.to).getFullYear()})</div>${bars(mO, 'n', 'incidents', 0, mO.length - 1)}<span class="src">dernier mois en cours, incomplet</span></div>
+      <div class="card tile"><div class="l">Morts ACLED par mois (${new Date(m.to).getFullYear()})</div>${bars(mA, 'morts', 'morts', 0, mA.length - 1)}<span class="src">dernier mois en cours, incomplet</span></div></div>
+    <div class="acts">${ask('Attaques de drones depuis septembre 2026')}${ask('Incidents contre les convois humanitaires en 2026')}${ask('Situation sécuritaire dans le Liptako')}</div>`;
+}
+
+// ---------- 3. DÉPLACEMENTS ----------
+function renderDeplacements(partial) {
+  const G = D.deplacements, m = D.meta; const t = G.tot || {}, tp = G.tot_prev || {}, an = G.annee || {}, ap = G.annee_prec || {};
+  const al = (G.alertes || []).map(a => `<div class="ev"><b>${n0(a.pers)} personnes (${n0(a.men)} ménages)</b> arrivées à <b>${esc(a.com)}</b>${a.villages ? ' (' + esc(a.villages) + ')' : ''}, ${esc(a.prov)} / ${esc(a.reg)}, en provenance de ${esc(a.orig)}${a.orig_prov && a.orig_prov !== a.prov ? ' (' + esc(a.orig_prov) + ')' : ''}
+    <div class="m">Arrivée ${fd(a.d)} · choc du ${fd(a.choc)} : ${esc(({'Security Incident':'incident sécuritaire'})[a.type] || a.type)}${a.sev ? ' · sévérité ' + esc(({High:'élevée',Medium:'moyenne',Low:'faible'})[a.sev] || a.sev) : ''} · alerte ${esc(a.id || a.dep_id)}${a.f != null ? ` · ${n0(a.f)} femmes, ${n0(a.h)} hommes, ${n0(a.fi)} filles, ${n0(a.g)} garçons` : ''}</div>
+    ${a.desc ? `<details><summary>Description et besoins</summary><div class="det"><p>${esc(a.desc)}</p>${a.besoins ? `<p><b>Besoins prioritaires :</b> ${esc(a.besoins)}</p>` : ''}</div></details>` : ''}
+    <div class="acts" style="margin-top:8px">${ask('Qui répond aux déplacés arrivés à ' + a.com + ' ?')}</div></div>`).join('');
+  const other = [...(G.weekly_mvt || []).map(w => `<div class="ev"><b>${esc(w.region)}</b> <span class="m">· rapport hebdo ${fd(w.week_end)} · ${n0(w.dep)} déplacés estimés</span><p>${esc(w.mvt)}</p></div>`),
+                 ...(G.daily_dep || []).map(a => `<div class="ev"><b>${esc(a.c.split(':')[0])}</b> <span class="m">· Daily Update ${fd(a.d)}</span><p>${esc(a.c.split(':').slice(1).join(':').trim())}</p></div>`)].join('');
+  $('#tab-deplacements').innerHTML = `<h2>Déplacements</h2><p class="sub">Alertes GCORR validées (OCHA / ECHO) — ${partial.gcorr ? 'dernière alerte publiée le ' + fd(m.gcorr_sync?.max_diffusion) : 'à jour'}</p>
+    <div class="grid g3">${tile('Personnes nouvellement déplacées sur la période', n0(t.pers || 0), `${t.n || 0} alerte(s)${tp.pers != null ? ' · ' + delta(t.pers, tp.pers) : (tp.n === 0 ? ' · aucune la période précédente' : '')}`, 'gcorr_alerts, date d\'arrivée dans la période')}
+      ${tile('Depuis le 1er janvier ' + an.an, n0(an.pers), `${an.n} alertes · ${n0(ap.pers)} sur toute l'année ${an.an - 1}`, 'gcorr_alerts')}
+      ${tile('Stock de personnes déplacées (HPC 2026)', n0(G.stock?.pdi), `${n0(G.stock?.retournes)} retournés · PIN ${n0(G.stock?.pin)}`, 'hpc_pin, groupes de population')}</div>
+    <h3 class="sec">Derniers déplacements</h3><div class="card">${al || '<p class="flat">Aucune alerte GCORR avec arrivée sur cette période.</p>'}</div>
+    ${other ? `<h3 class="sec">Mouvements signalés par le terrain (non encore validés GCORR)</h3><div class="card">${other}</div>` : ''}
+    <div class="grid g2" style="margin-top:12px"><div class="card tile"><div class="l">Personnes déplacées par mois (${an.an})</div>${bars(G.mensuel || [], 'pers', 'personnes', 0, (G.mensuel || []).length - 1)}</div>
+      <div class="card tile"><div class="l">Régions d'arrivée depuis le 1er janvier</div>${hbars((G.regions || []).slice(0, 8), r => r.region, r => r.pers, r => n0(r.pers))}</div></div>
+    <div class="acts">${ask('Déplacements dans le Sourou en 2026')}${ask('Besoins prioritaires des derniers déplacés')}</div>`;
+}
+
+// ---------- 4. ACCÈS ----------
+function renderAcces() {
+  const A = D.acces, m = D.meta; const z = A.zones?.[0] || {}, zp = A.zones?.[1] || {};
+  const cs = (A.convoi_synthese || []).find(x => /TOTAL/.test(x.groupe)) || {}; const g1 = (A.convoi_synthese || []).find(x => /^1/.test(x.groupe)) || {};
+  const u = A.unhas || []; const ul = u[u.length - 1] || {}, up = u[u.length - 2] || {};
+  const pr = A.perception?.[0] || {}, prp = A.perception?.[1] || {};
+  const zc = A.zones_changes || {};
+  const changes = [...(A.convois_periode || []).map(c => `<div class="ev"><b>Convoi ${esc(c.depart)} → ${esc(c.dest)}</b> <span class="m">· ${fd(c.d)} · ${esc(c.reg)}</span>${c.intrants ? `<p>${esc(c.intrants)}</p>` : ''}</div>`),
+    ...(A.weekly_acc || []).map(w => `<div class="ev"><b>${esc(w.region)}</b> <span class="m">· rapport hebdo ${fd(w.week_end)}</span><p>${esc(w.acc)}</p></div>`),
+    ...((zc.nouvelles || []).length ? [`<div class="ev"><b>Nouvelle(s) localité(s) enclavée(s) au ${fd(zc.d2)}</b><p>${zc.nouvelles.map(esc).join(' · ')}</p></div>`] : []),
+    ...((zc.sorties || []).length ? [`<div class="ev"><b>Localité(s) sortie(s) de la liste au ${fd(zc.d2)}</b><p>${zc.sorties.map(esc).join(' · ')}</p></div>`] : [])].join('');
+  $('#tab-acces').innerHTML = `<h2>Accès humanitaire</h2><p class="sub">Zones enclavées, convois, UNHAS et perception des partenaires — quatre lectures d'une même réalité</p>
+    <div class="grid g4">${tile('Localités enclavées ou inaccessibles', n0((z.localites_niv2 || 0) + (z.localites_niv3 || 0)), `${n0((z.pop_niv2 || 0) + (z.pop_niv3 || 0))} personnes, dont ${n0(z.pdi)} PDI toutes localités · ${delta((z.localites_niv2 || 0) + (z.localites_niv3 || 0), zp.localites_niv2 != null ? (zp.localites_niv2 || 0) + (zp.localites_niv3 || 0) : null)}`, `zone_enclavees au ${fd(z.report_date)}` + ((new Date(m.to) - new Date(z.report_date)) / 864e5 > 21 ? ' <span class="tag amb">mise à jour attendue</span>' : ''))}
+      ${tile('Communes sans convoi possible', n0(cs.communes_inaccessibles), `${n0(cs.communes_convoi_regulier)} à convoi régulier · ${n0(cs.communes_convoi_irregulier)} à convoi irrégulier · les 15 provinces concernées = ${g1.pct_pin_national} % du PIN`, 'Classification de l\'équipe accès (' + esc(m.convoi_classif || '') + ')')}
+      ${tile('UNHAS en ' + MOL[new Date(ul.mois || m.to).getMonth()], n0(ul.pax_total) + ' <small>passagers</small>', `${(ul.cargo_kg / 1000).toFixed(1).replace('.', ',')} t de fret · ${ul.destinations_pax} destinations · ${delta(ul.pax_total, up.pax_total, true)}`, 'UNHAS / PAM, données mensuelles')}
+      ${tile('Communes à contraintes élevées (perception)', n0(pr.eleve) + ' <small>sur ' + n0(pr.n) + '</small>', `${delta(pr.eleve, prp.eleve)} · score moyen ${String(pr.moy).replace('.', ',')} (contraintes modérées)`, 'access_perception, round ' + esc(pr.round))}</div>
+    <h3 class="sec">Ce qui a changé sur la période</h3><div class="card">${changes || '<p class="flat">Aucun convoi, aucun changement de zone ni information d\'accès rapportés sur cette période.</p>'}</div>
+    <div class="grid g2" style="margin-top:12px"><div class="card tile"><div class="l">Population en localités enclavées ou inaccessibles, par région</div>${hbars((A.zones_regions || []).slice(0, 9), r => r.region, r => r.pop, r => n0(r.pop) + ` <span style="color:var(--light);font-weight:400">· ${r.loc} loc.</span>`)}<span class="src">v_zones_summary au ${fd(z.report_date)}</span></div>
+      <div class="card tile"><div class="l">Passagers UNHAS par mois</div>${bars(u.map(x => ({ mois: new Date(x.mois).getMonth() + 1, v: x.pax_total })), 'v', 'passagers')}<span class="src">v_unhas_mensuel</span>
+        <details><summary>Cohérence des quatre lectures</summary><div class="det"><p>${n0(A.coherence)} communes où la classification convoi, la perception des partenaires et les zones enclavées ne disent pas la même chose — fichier de vérification envoyé à l'équipe accès le 23 octobre.</p></div></details></div></div>
+    <details class="card" style="margin-top:12px"><summary>Derniers convois chargés (${(A.convois_recents || []).length})</summary><div class="det">${(A.convois_recents || []).map(c => `<div class="ev"><b>${esc(c.depart)} → ${esc(c.dest)}</b> <span class="m">· ${fd(c.d)} · ${esc(c.reg)}</span></div>`).join('')}</div></details>
+    <div class="acts">${ask('Situation des convois humanitaires')}${ask('Accès aérien UNHAS vers Djibo')}${ask('Localités enclavées du Koulsé')}</div>`;
+}
+
+// ---------- 5. RÉPONSE ----------
+function renderReponse() {
+  const R = D.reponse || []; const m = D.meta; const inter = R.find(r => r.cluster === 'INTERSECTORIEL') || {};
+  const lab = { WASH: 'Eau, hygiène, assainissement', ABRIS: 'Abris / AME', PRO: 'Protection', EDU: 'Éducation', GSAT: 'Gestion des sites', refugee: 'Réfugiés', NUT: 'Nutrition', SECAL: 'Sécurité alimentaire', SANTE: 'Santé', INTERSECTORIEL: 'Intersectoriel' };
+  const elapsed = Math.round(m.reached_last_month / 12 * 100);
+  $('#tab-reponse').innerHTML = `<h2>Réponse humanitaire</h2><p class="sub">Personnes atteintes depuis janvier, monitoring intersectoriel — dernier mois rapporté : ${MOL[m.reached_last_month - 1]}</p>
+    <div class="grid g3">${tile('Personnes atteintes', n0(inter.atteints), `sur ${n0(inter.cible)} ciblées`, 'v_cluster_coverage national')}
+      ${tile('Couverture de la cible', String(inter.pct).replace('.', ',') + ' %', `à fin ${MOL[m.reached_last_month - 1]}, soit ${elapsed} % de l'année écoulée`, inter.pct < elapsed - 15 ? '<span class="tag red">en retard sur l\'année</span>' : '')}
+      ${tile('Clusters sous 25 % de couverture', R.filter(r => r.cluster !== 'INTERSECTORIEL' && r.pct < 25).map(r => lab[r.cluster] || r.cluster).join(', ') || 'aucun', '', 'v_cluster_coverage')}</div>
+    <div class="card tile" style="margin-top:12px"><div class="l">Couverture de la cible par cluster</div>${hbars(R.filter(r => r.cluster !== 'INTERSECTORIEL'), r => lab[r.cluster] || r.cluster, r => r.pct, r => String(r.pct).replace('.', ',') + ' %', v => v < 25 ? 'low' : v < 40 ? 'mid' : '')}<span class="src">rouge &lt; 25 %, orange &lt; 40 %</span></div>
+    <div class="acts">${ask('Couverture par cluster dans les provinces en sévérité 4')}${ask('Qui fait quoi dans le Sourou ?')}</div>`;
+}
+
+// ---------- 6. FINANCEMENT ----------
+function renderFinancement() {
+  const Fi = D.financement; const nat = Fi.national || []; const cur = nat[0] || {}, prev = nat[1] || {};
+  const musd = v => v == null ? '—' : (v / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' M US$';
+  const comp = (Fi.comparaison || []).filter(c => c.financement_2026_usd != null); const last = comp[comp.length - 1] || {};
+  const m25 = Math.max(1, ...(Fi.comparaison || []).map(c => +c.financement_2025_usd || 0));
+  const dual = `<div class="bars" style="gap:6px">${comp.map(c => `<div style="display:flex;gap:2px;flex:1;height:100%;align-items:flex-end;background:none"><div style="flex:1;height:${c.financement_2026_usd / m25 * 100}%" data-t="${MO[c.mois - 1]} 2026 : ${musd(c.financement_2026_usd)}"></div><div class="cur" style="flex:1;height:${c.financement_2025_usd / m25 * 100}%;outline:0" data-t="${MO[c.mois - 1]} 2025 : ${musd(c.financement_2025_usd)}"></div></div>`).join('')}</div><div class="axis"><span>${MO[(comp[0]?.mois || 1) - 1]}</span><span>${MO[(last.mois || 12) - 1]} · bleu = ${cur.annee}, clair = ${cur.annee - 1}</span></div>`;
+  $('#tab-financement').innerHTML = `<h2>Financement du plan ${cur.annee}</h2><p class="sub">FTS au ${fdl(cur.date_maj)} — base de la mise à jour bimensuelle pour le chef de bureau</p>
+    <div class="grid g3">${tile('HNRP ' + cur.annee + ' financé', String(cur.couverture_pct).replace('.', ',') + ' %', `${musd(cur.financement_usd)} reçus sur ${musd(cur.besoins_usd)} · déficit ${musd(cur.deficit_usd)}`, 'v_fts_couverture_nationale')}
+      ${tile('À la même date en ' + (cur.annee - 1), musd(last.financement_2025_usd), `<span class="${last.ecart_pct < 0 ? 'up' : 'down'}">${last.ecart_pct > 0 ? '+' : ''}${String(last.ecart_pct).replace('.', ',')} %</span> cette année (${musd(last.financement_2026_usd)})`, 'v_fts_comparaison_annuelle, cumul à fin ' + MOL[(last.mois || 1) - 1])}
+      ${tile('Année ' + prev.annee + ' (clôture)', String(prev.couverture_pct).replace('.', ',') + ' %', `${musd(prev.financement_usd)} sur ${musd(prev.besoins_usd)}`, 'v_fts_couverture_nationale')}</div>
+    <div class="grid g3" style="margin-top:12px"><div class="card tile"><div class="l">Cumul mensuel ${cur.annee} vs ${cur.annee - 1}</div>${dual}</div>
+      <div class="card tile"><div class="l">Clusters les moins financés</div>${hbars((Fi.clusters || []).slice(0, 9), r => r.cluster, r => r.pct, r => String(r.pct).replace('.', ',') + ' %', v => v < 10 ? 'low' : v < 20 ? 'mid' : '')}</div>
+      <div class="card tile"><div class="l">Principaux bailleurs</div>${hbars((Fi.bailleurs || []).slice(0, 7), r => r.b.replace("European Commission's Humanitarian Aid and Civil Protection Department", 'ECHO (UE)').replace(', Government of', '').replace('Central Emergency Response Fund', 'CERF'), r => r.usd, r => musd(r.usd) + ` <span style="color:var(--light);font-weight:400">· ${r.pct} %</span>`)}</div></div>
+    <div class="card" style="margin-top:12px"><div class="tile"><div class="l">Comparaison régionale — plans de réponse ${cur.annee}</div></div>
+      <div class="cmp" style="margin-top:10px"><div class="c me"><div class="v">${String(cur.couverture_pct).replace('.', ',')} %</div><div class="l"><b>Burkina Faso</b> · ${musd(cur.financement_usd)} / ${musd(cur.besoins_usd)}<br>FTS, ${fd(cur.date_maj)}</div></div>
+        <div class="c"><div class="v">23 %</div><div class="l"><b>Mali</b> · 136 M / 578 M US$<br>OCHA Mali, 28 sept. <span class="tag amb">provisoire</span></div></div>
+        <div class="c"><div class="v">—</div><div class="l"><b>Niger</b> · plan 449 M US$<br>financement <span class="tag amb">à lire sur FTS</span></div></div></div>
+      <p class="note">Mali et Niger seront lus sur FTS à la même date que le Burkina (automatisation à venir) ; en attendant, chiffres publics provisoires.</p></div>
+    <div class="acts">${ask('Prépare la mise à jour FTS de la quinzaine pour le chef de bureau')}${ask('Évolution du financement 2025 vs 2026 par mois')}</div>`;
+}
+
+// ---------- 7. MÉDIAS ----------
+function renderMedias() {
+  const M = D.medias; const m = D.meta;
+  const li = a => `<li><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a> <span class="m">— ${esc(a.outlet)}, ${fd(a.d)}${a.section ? ' · ' + esc(a.section.split(' / ')[0]) : ''}</span><br>${esc(a.summary || '')}</li>`;
+  let body;
+  if ((M.retenus || []).length) body = `<p class="sub">Articles retenus par l'équipe PI sur la période (${M.retenus.length})</p><div class="card"><ul class="media" style="margin:0;padding-left:18px">${M.retenus.map(li).join('')}</ul></div>`;
+  else if ((M.retenus_recents || []).length) body = `<p class="sub">Aucun article retenu par PI sur cette période — derniers articles retenus :</p><div class="card"><ul class="media" style="margin:0;padding-left:18px">${M.retenus_recents.map(li).join('')}</ul></div>`;
+  else body = `<p class="sub">L'équipe PI n'a pas encore validé d'articles. En attendant, les histoires jugées les plus importantes par le tri automatique :</p><div class="card"><ul class="media" style="margin:0;padding-left:18px">${(M.proposes || []).map(li).join('') || '<li class="flat">rien à afficher</li>'}</ul><span class="src">tri automatique, en attente de validation PI</span></div>`;
+  $('#tab-medias').innerHTML = `<h2>Ce que dit la presse</h2>${body}<div class="acts"><a class="btn" href="../medias/" target="_blank" rel="noopener">Ouvrir le monitoring médias ↗</a>${ask('Que dit la presse sur les convois ?')}</div>`;
+}
+
+// ---------- navigation & période ----------
+const links = [...document.querySelectorAll('#tabs a:not(.ask)')];
+function show(id) { document.querySelectorAll('section').forEach(x => x.classList.toggle('on', x.id === 'tab-' + id)); links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id)); try { localStorage.setItem('dir_tab', id); } catch (e) {} window.scrollTo(0, 0); }
+links.forEach(a => a.onclick = e => { e.preventDefault(); show(a.getAttribute('href').slice(1)); history.replaceState(null, '', a.getAttribute('href')); });
+$('#preset').onchange = () => { const v = $('#preset').value; const today = new Date(); $('#customRange').style.display = v === 'custom' ? 'inline' : 'none';
+  if (v === 'week') P = { from: null, to: null }; else if (v === 'ytd') P = { from: today.getFullYear() + '-01-01', to: iso(today) }; else if (v !== 'custom') P = { from: iso(new Date(today - (v - 1) * 864e5)), to: iso(today) }; else return;
+  try { localStorage.setItem('dir_preset', v); } catch (e) {} load(); };
+$('#goRange').onclick = () => { if ($('#dFrom').value && $('#dTo').value) { P = { from: $('#dFrom').value, to: $('#dTo').value }; load(); } };
+(async () => {
+  if (!(await AUTH.ready)) { $('#loading').style.display = 'none'; return; }
   let first = location.hash.slice(1); try { first = first || localStorage.getItem('dir_tab'); } catch (e) {}
   show(document.getElementById('tab-' + first) ? first : 'faits');
+  try { const p = localStorage.getItem('dir_preset'); if (p && p !== 'custom') { $('#preset').value = p; $('#preset').onchange(); return; } } catch (e) {}
+  AUTH.log && AUTH.log('direction_open', null);
+  load();
 })();
-(async () => { if (!(await AUTH.ready)) document.getElementById('main').style.display = 'none'; else AUTH.log && AUTH.log('direction_open', 'maquette'); })();
 </script>
 </body>
 </html>
