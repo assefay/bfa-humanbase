@@ -783,6 +783,10 @@ function enforceSourcingRules(routerOutput, query) {
     add('unhas', 'rule7bis-unhas');
     add('convois', 'rule7bis-unhas');
   }
+  // Règle 8 : presse / médias — articles retenus par l'équipe PI (monitoring médias)
+  if (/presse|m[ée]dias?|journa(l|ux)|articles?|revue de presse|que dit (la presse|on)|couverture m[ée]diatique|actualit[ée]s?/.test(q)) {
+    add('media_retenus', 'rule8-presse');
+  }
   // Règle 6 : bilan humain — les totaux de victimes font foi dans les agrégats
   // précalculés des incidents terrain, jamais dans le narratif hebdomadaire.
   if (/civils? tu[ée]s?|victimes civiles|morts? civils?|d[ée]c[èe]s civils?|bilan humain|personnes tu[ée]es|bless[ée]s/.test(q)) {
@@ -849,6 +853,7 @@ cluster_reached: Personnes atteintes par la réponse humanitaire 2026 (monitorin
 partners_3w: Présence opérationnelle 3W 2026 (Qui/Quoi/Où, collecte BIMESTRIELLE — périodes de deux mois, vue v_3w_presence) — organisations par cluster × région × bimestre, avec type (ONG nationale/internationale, ONU), activités, provinces et communes couvertes; registre org_reference (acronyme, nom complet, type). Pour toute question sur les partenaires, acteurs présents, qui fait quoi où, présence opérationnelle, ONG actives — y compris lorsque la question cite un mois isolé (le mois est résolu vers le bimestre qui le contient).
 convois: Convois 2026 — régularité de la desserte par commune (classification finale de l'équipe accès : convoi régulier ≥3, convoi irrégulier 1–2, inaccessible / pas de convoi possible, accessible sans convoi), convois effectués (départ, destination, dates, intrants humanitaires), et PIN / ciblés / atteints (intersectoriel HNRP 2026) des provinces qui dépendent des convois. Pour toute question sur les convois, escortes, ravitaillement, desserte des localités.
 unhas: UNHAS 2026 (service aérien humanitaire) — passagers et fret par destination et par mois, par agence et nature du fret, avec le statut convoi de chaque commune desservie. Pour toute question sur les vols, l'accès aérien, les passagers, le fret / cargo, les hélicoptères, et avec les convois pour l'accès logistique.
+media_retenus: Monitoring médias de l'équipe PI OCHA — articles de presse RETENUS par PI chaque semaine (titre, média, date, résumé, lien), classés en rubriques : actualités nationales, coopération bilatérale / régionale, humanitaire / ONU, opinions / analyses, international. Pour toute question sur ce que dit la presse ou les médias, la revue de presse, l'actualité de la semaine, la couverture médiatique d'un sujet ou d'un lieu.
 fts_financement: Financement humanitaire du plan (OCHA FTS) — besoins financiers, montants financés, taux de couverture et déficit, par année (2024, 2025, 2026) et par cluster; principaux bailleurs et principales organisations récipiendaires. Pour toute question sur le financement, les fonds reçus, les bailleurs ou donateurs, la couverture financière, le gap ou déficit de financement, le coût du plan, le HNRP financé. Portée nationale uniquement: FTS ne publie pas de ventilation par région, province ou commune — choisir quand même cette table lorsque la question cite un lieu, et recopier ce lieu dans regions.`;
 
   try {
@@ -1453,6 +1458,21 @@ PAR MOIS (national) :
 ${moisTxt}
 FRET PAR NATURE (national) :
 ${natTxt}`);
+  }
+  // MONITORING MÉDIAS — articles retenus par PI (vue v_media_retenus, lecture seule)
+  if(hasTable('media_retenus')){
+    const since=new Date(Date.now()-90*864e5).toISOString();
+    const arts=await sb(`v_media_retenus?select=week_start,section_label,published_at,outlet,title,url,summary&published_at=gte.${since}&order=published_at.desc&limit=300`);
+    const nrmM=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const keys=[...(route.regions||[]),...(region?[region]:[]),...(place&&place.name?[place.name]:[])].map(nrmM).filter(Boolean);
+    let pick=arts;
+    if(keys.length){const hit=arts.filter(a=>keys.some(k=>nrmM(a.title+' '+a.summary).includes(k)));if(hit.length)pick=hit;}
+    pick=pick.slice(0,40);
+    const fd=d=>new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+    const txt=pick.map(a=>`  [${fd(a.published_at)} · ${a.outlet} · ${a.section_label}] ${a.title} — ${a.summary||''} (${a.url})`).join('\n');
+    parts.push(`=== MONITORING MÉDIAS — ARTICLES RETENUS PAR L'ÉQUIPE PI (source : presse burkinabè et internationale, sélection hebdomadaire PI OCHA, 90 derniers jours${keys.length?' ; filtrés sur le lieu demandé quand des articles le citent':''}) ===
+RÈGLE : ce sont des articles de presse, pas des données OCHA vérifiées. Les présenter comme « selon <média> » avec la date, ne pas les mélanger aux chiffres officiels ; signaler quand la presse et les données OCHA divergent.
+${txt||'  aucun article retenu sur la période (le monitoring médias a démarré fin octobre 2026)'}`);
   }
   // FINANCEMENT FTS — national (aucune ventilation régionale possible)
   if(isAll||hasTable('fts_financement')){
