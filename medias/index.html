@@ -273,8 +273,10 @@ async function renderSrc() {
   const row = s => `<tr data-id="${s.id}">
     <td><b>${esc(s.name)}</b><br><span style="color:var(--mut);font-size:12px">${s.kind === 'rss' ? 'Flux RSS' : 'Google Actualités'} · ${esc(s.lang || 'fr')}</span></td>
     <td class="q">${esc(s.kind === 'rss' ? s.url : s.query)}</td>
-    <td>${esc((SEC[s.default_section] || '—').split(' / ')[0])}</td>
-    <td>${s.last_status == null ? '<span style="color:var(--mut)">pas encore lu</span>' : (String(s.last_status) === '200' ? '<span class="ok">OK</span>' : '<span class="ko">Erreur ' + esc(s.last_status) + '</span>')}<br><span style="color:var(--mut);font-size:12px">${fdt(s.last_fetch_at)}${s.last_new != null ? ' · ' + s.last_new + ' nouveau(x)' : ''}</span></td>
+    <td>${s.default_section ? esc(SEC[s.default_section].split(' / ')[0]) : '<span style="color:var(--mut)" title="La rubrique est choisie article par article lors du tri automatique">selon l\'article</span>'}</td>
+    <td>${s.last_status == null ? '<span style="color:var(--mut)">pas encore lue</span>'
+        : /^OK/.test(s.last_status) ? '<span class="ok">✓ ' + esc(s.last_status.replace(/^OK\s*—\s*/, '')) + '</span>'
+        : '<span class="ko">Erreur : ' + esc(s.last_status) + '</span>'}<br><span style="color:var(--mut);font-size:12px">${fdt(s.last_fetch_at)}</span></td>
     <td><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" class="act" ${s.active ? 'checked' : ''}> active</label></td>
   </tr>`;
   $('#main').innerHTML = `
