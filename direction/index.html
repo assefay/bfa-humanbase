@@ -172,7 +172,7 @@ function renderIncidents(partial) {
   const I = D.incidents, m = D.meta;
   const th = k => ({ O: I.themes.find(x => x.source === 'OCHA' && x.theme === k) || {}, A: I.themes.find(x => x.source === 'ACLED' && x.theme === k) || {} });
   const T = [['tous', 'Tous incidents'], ['drone', 'Drones'], ['eei', 'EEI'], ['convoi', 'Attaques contre convois'], ['enlevement', 'Enlèvements'], ['humanitaires', 'Humanitaires ciblés'], ['pillage_betail', 'Pillage / bétail'], ['sante', 'Santé'], ['education', 'Éducation']];
-  const acledTag = partial.acled ? `<span class="tag amb" title="ACLED a publié jusqu'au ${fd(m.acled_sync?.max_event)}">partiel</span>` : '';
+  const acledTag = partial.acled ? `<span class="tag amb" title="ACLED publie ses données avec quelques jours de retard : les événements après cette date ne sont pas encore disponibles">jusqu'au ${fd(m.acled_sync?.max_event)}</span>` : '';
   const tiles = T.map(([k, l]) => { const { O, A } = th(k);
     return `<div class="card tile${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? ' clickable' : ''}" data-theme="${k}" data-label="${l}"><div class="l">${l}${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? ' <span class="tag blue">voir le détail ▸</span>' : ''}</div><div class="v">${n0(O.n || 0)} <small>OCHA</small> &nbsp; ${n0(A.n || 0)} <small>ACLED${acledTag}</small></div>
       <div class="c">${(O.morts || A.morts) ? `${n0((O.morts || 0))} / ${n0(A.morts || 0)} morts · ` : ''}période précédente : ${n0(O.n_prev || 0)} / ${partial.acled ? '—' : n0(A.n_prev || 0)}</div></div>`; }).join('');
@@ -180,9 +180,9 @@ function renderIncidents(partial) {
   const ocha = (I.ocha_list || []).map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc || e.com || e.reg)} (${esc(e.reg)}) : ${esc(e.type)}${e.tues ? ', ' + e.tues + ' civil(s) tué(s)' : ''}${e.dep ? ', ' + n0(e.dep) + ' déplacés' : ''}</b><p>${esc(e.desc || '')}${e.hum ? ' <i>' + esc(e.hum) + '</i>' : ''}</p></div>`).join('');
   const mo = I.mensuel || []; const mO = mo.filter(x => x.src === 'OCHA'), mA = mo.filter(x => x.src === 'ACLED');
   const ct = I.civils_tues || {};
-  $('#tab-incidents').innerHTML = `<h2>Incidents sécuritaires</h2><p class="sub">Terrain OCHA et ACLED côte à côte, jamais additionnés${partial.acled ? ' — ACLED publié jusqu\'au ' + fd(m.acled_sync?.max_event) + ', donc partiel pour cette période' : ''}</p>
+  $('#tab-incidents').innerHTML = `<h2>Incidents sécuritaires</h2><p class="sub">Terrain OCHA et ACLED côte à côte, jamais additionnés${partial.acled ? ' — ACLED ne couvre cette période que jusqu\'au ' + fd(m.acled_sync?.max_event) + ' (publication avec quelques jours de retard)' : ''}</p>
     <div class="grid g3">${tile('Civils tués (terrain OCHA)', n0(ct.n || 0), delta(ct.n, ct.n_prev), 'ocha_field_incidents')}
-      ${tile('Morts toutes catégories (ACLED)', n0(th('tous').A.morts || 0) + (partial.acled ? ' <small>partiel</small>' : ''), partial.acled ? `<span class="flat">comparaison suspendue : ACLED publié jusqu'au ${fd(m.acled_sync?.max_event)}</span>` : delta(th('tous').A.morts, th('tous').A.morts_prev), 'acled_incidents — batailles, explosions, violences contre civils')}
+      ${tile('Morts toutes catégories (ACLED)', n0(th('tous').A.morts || 0) + (partial.acled ? ` <small>jusqu'au ${fd(m.acled_sync?.max_event)}</small>` : ''), partial.acled ? `<span class="flat">comparaison suspendue : ACLED publié jusqu'au ${fd(m.acled_sync?.max_event)}</span>` : delta(th('tous').A.morts, th('tous').A.morts_prev), 'acled_incidents — batailles, explosions, violences contre civils')}
       ${tile('Régions les plus touchées (ACLED, période)', (I.acled_regions || []).slice(0, 3).map(r => esc(r.region)).join(', ') || '—', (I.acled_regions || []).slice(0, 3).map(r => `${esc(r.region)} : ${r.morts} morts / ${r.n} év.`).join(' · '), 'acled_incidents')}</div>
     <h3 class="sec">Par thème — OCHA / ACLED</h3><div class="grid g3">${tiles}</div>
     <div id="themeDetail"></div>
