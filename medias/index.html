@@ -144,12 +144,37 @@ function renderTri() {
   </div>`;
   if (filt === 'autres') html += `<p class="help" style="margin:-4px 0 12px">Articles collectés que le tri automatique n'a pas proposés. Si l'un d'eux aurait dû l'être, marquez-le « Retenu » : le système apprend de vos choix.</p>`;
   if (!list.length) html += `<div class="empty">${filt === 'a_trier' ? 'Rien à trier pour cette période. 🎉' : 'Aucun article.'}</div>`;
+  const byScore = (x, y) => (y.ai_score || 0) - (x.ai_score || 0) || new Date(y.published_at) - new Date(x.published_at);
+  let rest = list;
+  // « À ne pas manquer » : les 10 histoires jugées les plus importantes, en tête de liste
+  if (filt === 'a_trier' && !secF && list.length > 12) {
+    const top = [...list].sort(byScore).slice(0, 10), ids = new Set(top.map(a => a.id));
+    html += `<h2 class="sec" style="color:#B3261E">★ À ne pas manquer · ${top.length}</h2><p class="help" style="margin:-4px 0 10px">Les 10 articles jugés les plus importants. Pressé ? Traitez ceux-ci puis « Écarter le reste ».</p>` + top.map(card).join('');
+    rest = list.filter(a => !ids.has(a.id));
+  }
   for (const [code, label] of SECTIONS) {
-    const g = list.filter(a => (a.section || 'NAT') === code).sort((x, y) => (y.ai_score || 0) - (x.ai_score || 0) || new Date(y.published_at) - new Date(x.published_at));
+    const g = rest.filter(a => (a.section || 'NAT') === code).sort(byScore);
     if (!g.length) continue;
     html += `<h2 class="sec">${esc(label)} · ${g.length}</h2>` + g.map(card).join('');
   }
+  if (filt === 'a_trier' && list.length) html += `<div style="margin:22px 0;text-align:center"><button class="btn" id="bulk">✕ Écarter le reste (${list.length} article${list.length > 1 ? 's' : ''} non triés${secF ? ' de cette rubrique' : ''})</button>
+    <p class="help">Tout ce qui n'a pas été marqué « Retenu » dans cette liste passe en « Écartés ». Vous pourrez toujours le repêcher dans l'onglet « Écartés ».</p></div>`;
   $('#main').innerHTML = html;
+  const bulk = $('#bulk');
+  if (bulk) bulk.onclick = async () => {
+    if (!bulk.dataset.ok) { bulk.dataset.ok = 1; bulk.classList.add('pri'); bulk.style.background = 'var(--no)'; bulk.style.borderColor = 'var(--no)'; bulk.textContent = `Confirmer : écarter ${list.length} article(s)`; return; }
+    bulk.disabled = true; bulk.textContent = 'En cours…';
+    const ids = list.map(a => a.id), when = new Date().toISOString(), who = AUTH.email + ' (en lot)';
+    try {
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        await api('media_articles?id=in.(' + chunk.join(',') + ')&decision=is.null', { method: 'PATCH', body: JSON.stringify({ decision: 'ecarte', decided_by: who, decided_at: when }), headers: { Prefer: 'return=minimal' } });
+        chunk.forEach(id => Object.assign(ARTS.find(x => x.id === id), { decision: 'ecarte', decided_by: who, decided_at: when }));
+      }
+      $('#nTri').textContent = ARTS.filter(x => x.ai_relevant && !x.decision && inDays(x, 7)).length;
+      toast(ids.length + ' article(s) écarté(s)'); renderTri();
+    } catch (e) { toast('Erreur : ' + e.message); renderTri(); }
+  };
   $('#main').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filt = b.dataset.f; renderTri(); });
   $('#secF').onchange = e => { secF = e.target.value; renderTri(); };
   $('#days').onchange = e => { days = +e.target.value; renderTri(); };
