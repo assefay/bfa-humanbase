@@ -11,6 +11,10 @@
   const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
   const LS = 'bfa_hb_session';
   const AUTH = (window.AUTH = { token: null, email: null, ready: null });
+  // Une page peut choisir sa règle d'accès et son titre avant de charger ce fichier :
+  //   window.AUTH_CHECK = 'is_media_user'; window.AUTH_TITLE = 'Monitoring médias';
+  const CHECK = window.AUTH_CHECK || 'is_allowed';
+  const TITLE = window.AUTH_TITLE || 'BFA HumanBase';
 
   // ---------- stockage de session ----------
   function jwtPayload(t) {
@@ -75,7 +79,7 @@
     }
     el.innerHTML = '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;max-width:420px;width:100%;' +
       'padding:32px;box-shadow:0 8px 32px rgba(15,25,35,.12)"><div style="font-size:13px;color:#026CB6;font-weight:600;' +
-      'letter-spacing:.04em">OCHA BURKINA FASO</div><h1 style="font-size:22px;margin:6px 0 4px">BFA HumanBase</h1>' + html + '</div>';
+      'letter-spacing:.04em">OCHA BURKINA FASO</div><h1 style="font-size:22px;margin:6px 0 4px">' + TITLE + '</h1>' + html + '</div>';
     return el;
   }
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -147,7 +151,7 @@
   };
 
   async function isAllowed() {
-    const r = await fetch(SB + '/rest/v1/rpc/is_allowed', { method: 'POST',
+    const r = await fetch(SB + '/rest/v1/rpc/' + CHECK, { method: 'POST',
       headers: { apikey: ANON, Authorization: 'Bearer ' + AUTH.token, 'Content-Type': 'application/json' }, body: '{}' });
     return r.ok && (await r.json()) === true;
   }

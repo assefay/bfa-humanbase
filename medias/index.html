@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring médias — OCHA Burkina Faso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>window.AUTH_CHECK = 'is_media_user'; window.AUTH_TITLE = 'Monitoring médias';</script>
+<script src="../auth.js"></script>
+<style>
+:root{--blue:#026CB6;--blue-50:#E8F1F9;--ink:#0F1923;--mut:#4A6070;--line:#E2E8F0;--bg:#F7F9FC;--ok:#2E7D32;--ok-50:#E8F5E9;--no:#B3261E;--no-50:#FCEBEA;--warn:#8A5A00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'DM Sans','Segoe UI',sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.bar{max-width:1080px;margin:0 auto;padding:12px 16px 0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 24px}
+.brand{padding-bottom:10px}
+.brand small{display:block;color:var(--blue);font-weight:600;letter-spacing:.04em;font-size:11px}
+.brand b{font-size:18px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:10px 12px;font:inherit;font-weight:500;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent}
+nav button.on{color:var(--blue);border-bottom-color:var(--blue)}
+nav .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--blue-50);color:var(--blue);font-size:12px}
+main{max-width:1080px;margin:0 auto;padding:16px 16px 80px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.tools .sp{flex:1}
+select,input,textarea{font:inherit;color:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff}
+.chip{border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--mut)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit;font-weight:500}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);margin:22px 0 8px;font-weight:700}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:6px 16px}
+.card.retenu{border-left:4px solid var(--ok)}
+.card.ecarte{border-left:4px solid var(--no);opacity:.65}
+.card a.t{color:var(--ink);font-weight:600;font-size:15px;text-decoration:none}
+.card a.t:hover{color:var(--blue);text-decoration:underline}
+.meta{color:var(--mut);font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.meta select{padding:2px 6px;font-size:12px}
+.tag{font-size:11px;padding:1px 7px;border-radius:9px;background:#F1F4F8;color:var(--mut)}
+.tag.warn{background:#FFF4DC;color:var(--warn)}
+.sum{grid-column:1/-1;color:#24323F;white-space:pre-wrap;cursor:text;border-radius:6px;padding:2px 4px;margin:0 -4px}
+.sum:hover{background:#F6F8FB}
+.sum textarea{width:100%;min-height:90px}
+.others{grid-column:1/-1;font-size:12.5px;color:var(--mut)}
+.others a{color:var(--blue)}
+.acts{display:flex;flex-direction:column;gap:6px;grid-row:1/3;grid-column:2}
+.acts button{border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:#fff;cursor:pointer;font:inherit;font-size:13px;font-weight:600;min-width:96px}
+.acts .r.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.acts .r:not(.on):hover{background:var(--ok-50);color:var(--ok)}
+.acts .e.on{background:var(--no);border-color:var(--no);color:#fff}
+.acts .e:not(.on):hover{background:var(--no-50);color:var(--no)}
+.empty{color:var(--mut);background:#fff;border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center}
+.doc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px 28px;font-family:Calibri,'Segoe UI',sans-serif;font-size:14.5px}
+.doc h3{font-size:14.5px;margin:20px 0 8px;text-decoration:underline}
+.doc .it{margin:0 0 14px}
+.doc .it a{color:#0563C1}
+.doc .d{color:#555}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+th{background:#F1F4F8;font-weight:600;color:var(--mut)}
+td.q{color:var(--mut);word-break:break-all;max-width:320px}
+.ok{color:var(--ok)} .ko{color:var(--no)}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.panel h3{margin:0 0 10px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mut)}
+.help{font-size:12.5px;color:var(--mut);margin:8px 0 0}
+#toast{position:fixed;left:50%;bottom:60px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;display:none;z-index:50}
+@media (max-width:640px){.card{grid-template-columns:1fr}.acts{grid-row:auto;grid-column:1;flex-direction:row}.doc{padding:16px}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="brand"><small>OCHA BURKINA FASO</small><b>Monitoring médias</b></div>
+  <nav id="nav">
+    <button data-v="tri" class="on">Articles à trier <span class="n" id="nTri">·</span></button>
+    <button data-v="sem">Résumé de la semaine</button>
+    <button data-v="src">Sources</button>
+  </nav>
+</div></header>
+<main id="main"><div class="empty">Chargement…</div></main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const SB = 'https://vshnatreclfntadwcyhy.supabase.co';
+const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzaG5hdHJlY2xmbnRhZHdjeWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTA4NzcsImV4cCI6MjA4OTg2Njg3N30.VOxHkUKvYKtsdc2iwmsDMP9w-BWh3LZ4ZFLD4-qzjd8';
+const SECTIONS = [
+  ['NAT', 'Perspectives nationales / Actualités générales'],
+  ['COOP', 'Coopération bilatérale / Perspectives régionales / Internationales'],
+  ['HUM', 'Perspectives humanitaires / ONU'],
+  ['OPI', 'Opinions / Analyses'],
+  ['INT', 'International'],
+];
+const SEC = Object.fromEntries(SECTIONS);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fdate = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+const fshort = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+const fdt = d => d ? new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
+
+async function api(path, opt = {}) {
+  const r = await fetch(SB + '/rest/v1/' + path, { ...opt, headers: {
+    apikey: ANON, Authorization: 'Bearer ' + AUTH.token, 'Content-Type': 'application/json',
+    Prefer: opt.method && opt.method !== 'GET' ? 'return=representation' : '', ...(opt.headers || {}) } });
+  if (!r.ok) { const t = await r.text(); throw new Error(r.status === 401 ? 'Session expirée : rechargez la page.' : t.slice(0, 200)); }
+  return r.status === 204 ? null : r.json();
+}
+
+// ---------- état ----------
+let ARTS = [], view = 'tri', filt = 'a_trier', days = 7, secF = '', week = null, SOURCES = [];
+
+async function loadArticles() {
+  const since = new Date(Date.now() - 40 * 864e5).toISOString();
+  ARTS = await api('v_media_articles?select=*&published_at=gte.' + since + '&order=published_at.desc&limit=2000');
+  $('#nTri').textContent = ARTS.filter(a => a.ai_relevant && !a.decision && inDays(a, 7)).length;
+}
+const inDays = (a, n) => new Date(a.published_at) > Date.now() - n * 864e5;
+
+// ---------- Articles à trier ----------
+function renderTri() {
+  const counts = {
+    a_trier: ARTS.filter(a => a.ai_relevant && !a.decision && inDays(a, days)).length,
+    retenu: ARTS.filter(a => a.decision === 'retenu' && inDays(a, days)).length,
+    ecarte: ARTS.filter(a => a.decision === 'ecarte' && inDays(a, days)).length,
+    autres: ARTS.filter(a => !a.ai_relevant && !a.decision && a.triaged_at && inDays(a, days)).length,
+  };
+  const chip = (k, l) => `<button class="chip ${filt === k ? 'on' : ''}" data-f="${k}">${l} (${counts[k]})</button>`;
+  let list = ARTS.filter(a => inDays(a, days));
+  if (filt === 'a_trier') list = list.filter(a => a.ai_relevant && !a.decision);
+  if (filt === 'retenu') list = list.filter(a => a.decision === 'retenu');
+  if (filt === 'ecarte') list = list.filter(a => a.decision === 'ecarte');
+  if (filt === 'autres') list = list.filter(a => !a.ai_relevant && !a.decision && a.triaged_at);
+  if (secF) list = list.filter(a => a.section === secF);
+
+  let html = `<div class="tools">
+    ${chip('a_trier', 'À trier')}${chip('retenu', 'Retenus')}${chip('ecarte', 'Écartés')}${chip('autres', 'Non proposés')}
+    <span class="sp"></span>
+    <select id="secF"><option value="">Toutes les rubriques</option>${SECTIONS.map(([c, l]) => `<option value="${c}" ${secF === c ? 'selected' : ''}>${esc(l.split(' / ')[0])}</option>`).join('')}</select>
+    <select id="days">${[[2, '2 derniers jours'], [7, '7 derniers jours'], [14, '14 derniers jours'], [40, '40 derniers jours']].map(([v, l]) => `<option value="${v}" ${days === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+  </div>`;
+  if (filt === 'autres') html += `<p class="help" style="margin:-4px 0 12px">Articles collectés que le tri automatique n'a pas proposés. Si l'un d'eux aurait dû l'être, marquez-le « Retenu » : le système apprend de vos choix.</p>`;
+  if (!list.length) html += `<div class="empty">${filt === 'a_trier' ? 'Rien à trier pour cette période. 🎉' : 'Aucun article.'}</div>`;
+  for (const [code, label] of SECTIONS) {
+    const g = list.filter(a => (a.section || 'NAT') === code).sort((x, y) => (y.ai_score || 0) - (x.ai_score || 0) || new Date(y.published_at) - new Date(x.published_at));
+    if (!g.length) continue;
+    html += `<h2 class="sec">${esc(label)} · ${g.length}</h2>` + g.map(card).join('');
+  }
+  $('#main').innerHTML = html;
+  $('#main').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filt = b.dataset.f; renderTri(); });
+  $('#secF').onchange = e => { secF = e.target.value; renderTri(); };
+  $('#days').onchange = e => { days = +e.target.value; renderTri(); };
+  bindCards();
+}
+
+function card(a) {
+  const others = (a.other_links || []);
+  return `<div class="card ${a.decision || ''}" data-id="${a.id}">
+    <div>
+      <a class="t" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+      <div class="meta"><b>${esc(a.outlet || '')}</b><span>${fshort(a.published_at)}</span>
+        <select class="secSel" title="Rubrique">${SECTIONS.map(([c, l]) => `<option value="${c}" ${a.section === c ? 'selected' : ''}>${esc(l.split(' / ')[0])}</option>`).join('')}</select>
+        ${a.lang === 'en' ? '<span class="tag">EN</span>' : ''}
+        ${a.summary_basis === 'titre' && !a.summary_edited ? '<span class="tag warn" title="Le texte de l\'article n\'a pas pu être lu : résumé rédigé à partir du titre. À compléter si l\'article est retenu.">résumé d\'après le titre</span>' : ''}
+        ${a.decided_by ? `<span class="tag">${esc(a.decision === 'retenu' ? 'retenu' : 'écarté')} par ${esc(a.decided_by.split('@')[0])}</span>` : ''}
+      </div>
+    </div>
+    <div class="acts">
+      <button class="r ${a.decision === 'retenu' ? 'on' : ''}">✓ Retenu</button>
+      <button class="e ${a.decision === 'ecarte' ? 'on' : ''}">✕ Écarté</button>
+    </div>
+    <div class="sum" title="Cliquer pour modifier le résumé">${esc(a.summary || '') || '<i style="color:#8A99A8">Pas encore de résumé — cliquer pour en écrire un.</i>'}</div>
+    ${others.length ? `<div class="others">Autre${others.length > 1 ? 's' : ''} lien${others.length > 1 ? 's' : ''} : ${others.map(o => `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.outlet || 'lien')}</a>`).join(' · ')}</div>` : ''}
+  </div>`;
+}
+
+async function patch(id, body) {
+  await api('media_articles?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(body), headers: { Prefer: 'return=minimal' } });
+  const a = ARTS.find(x => x.id === id);
+  Object.assign(a, body);
+  if ('summary' in body) a.summary_edited = true;
+}
+
+function bindCards() {
+  $('#main').querySelectorAll('.card').forEach(el => {
+    const id = +el.dataset.id, a = ARTS.find(x => x.id === id);
+    const decide = async d => {
+      const nd = a.decision === d ? null : d;      // re-cliquer annule
+      try {
+        await patch(id, { decision: nd, decided_by: nd ? AUTH.email : null, decided_at: nd ? new Date().toISOString() : null });
+        el.classList.remove('retenu', 'ecarte'); if (nd) el.classList.add(nd);
+        el.querySelector('.r').classList.toggle('on', nd === 'retenu');
+        el.querySelector('.e').classList.toggle('on', nd === 'ecarte');
+        $('#nTri').textContent = ARTS.filter(x => x.ai_relevant && !x.decision && inDays(x, 7)).length;
+        if (filt === 'a_trier' && nd) { el.style.transition = 'opacity .3s'; el.style.opacity = 0; setTimeout(renderTri, 300); }
+        else toast(nd ? (nd === 'retenu' ? 'Retenu' : 'Écarté') : 'Décision annulée');
+      } catch (e) { toast('Erreur : ' + e.message); }
+    };
+    el.querySelector('.r').onclick = () => decide('retenu');
+    el.querySelector('.e').onclick = () => decide('ecarte');
+    el.querySelector('.secSel').onchange = async e => {
+      try { await patch(id, { section: e.target.value }); a.section = e.target.value; toast('Rubrique modifiée'); renderTri(); }
+      catch (er) { toast('Erreur : ' + er.message); }
+    };
+    const s = el.querySelector('.sum');
+    s.onclick = () => {
+      if (s.querySelector('textarea')) return;
+      s.innerHTML = `<textarea>${esc(a.summary || '')}</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn pri">Enregistrer</button><button class="btn">Annuler</button></div>`;
+      const ta = s.querySelector('textarea'); ta.focus();
+      const [ok, ko] = s.querySelectorAll('button');
+      ko.onclick = ev => { ev.stopPropagation(); renderTri(); };
+      ok.onclick = async ev => {
+        ev.stopPropagation();
+        try { await patch(id, { summary: ta.value.trim() || null }); a.summary = ta.value.trim(); toast('Résumé enregistré'); renderTri(); }
+        catch (er) { toast('Erreur : ' + er.message); }
+      };
+    };
+  });
+}
+
+// ---------- Résumé de la semaine ----------
+function weekLabel(ws) {
+  const s = new Date(ws + 'T00:00:00'), e = new Date(s.getTime() + 6 * 864e5);
+  return 'du ' + s.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ' au ' + fdate(e);
+}
+function renderSem() {
+  const weeks = [...new Set(ARTS.map(a => a.week_start))].sort().reverse();
+  if (!week || !weeks.includes(week)) week = weeks[0];
+  const ret = ARTS.filter(a => a.week_start === week && a.decision === 'retenu');
+  const pending = ARTS.filter(a => a.week_start === week && a.ai_relevant && !a.decision).length;
+  let doc = `<p><b>MONITORING DES MÉDIAS — semaine ${esc(weekLabel(week))}</b></p>`;
+  let n = 0;
+  for (const [code, label] of SECTIONS) {
+    const g = ret.filter(a => (a.section || 'NAT') === code).sort((x, y) => new Date(y.published_at) - new Date(x.published_at));
+    if (!g.length) continue;
+    doc += `<h3>${esc(label)}</h3>` + g.map(a => {
+      n++;
+      const o = a.other_links || [];
+      return `<div class="it"><a href="${esc(a.url)}">${esc(a.title)}</a> – ${esc(a.outlet || '')}<br><span class="d">${fdate(a.published_at)}</span><br>${esc(a.summary || '')}` +
+        (o.length ? `<br>Autre lien : ${o.map(x => `<a href="${esc(x.url)}">${esc(x.outlet || x.url)}</a>`).join(' ; ')}` : '') + `</div>`;
+    }).join('');
+  }
+  $('#main').innerHTML = `<div class="tools">
+      <select id="wk">${weeks.map(w => `<option value="${w}" ${w === week ? 'selected' : ''}>Semaine ${esc(weekLabel(w))}</option>`).join('')}</select>
+      <span class="sp"></span>
+      <button class="btn pri" id="copy" ${n ? '' : 'disabled'}>Copier pour Outlook</button>
+    </div>
+    ${pending ? `<p class="help" style="margin:-4px 0 12px">${pending} article(s) de cette semaine restent à trier dans « Articles à trier ».</p>` : ''}
+    ${n ? `<div class="doc" id="doc">${doc}</div><p class="help">${n} article(s) retenu(s). « Copier pour Outlook » copie le texte avec les liens et la mise en forme : collez-le directement dans un e-mail.</p>`
+        : '<div class="empty">Aucun article retenu pour cette semaine. Marquez des articles « Retenu » dans « Articles à trier ».</div>'}`;
+  $('#wk').onchange = e => { week = e.target.value; renderSem(); };
+  const c = $('#copy');
+  if (c) c.onclick = async () => {
+    const node = $('#doc');
+    const html = `<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">${node.innerHTML.replace(/<h3>/g, '<p style="margin:14pt 0 6pt"><b><u>').replace(/<\/h3>/g, '</u></b></p>').replace(/class="it"/g, 'style="margin:0 0 10pt"').replace(/class="d"/g, 'style="color:#555"')}</div>`;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([node.innerText], { type: 'text/plain' }) })]);
+      toast('Copié — collez dans Outlook');
+    } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(node); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      document.execCommand('copy'); s.removeAllRanges(); toast('Copié');
+    }
+    AUTH.log && AUTH.log('media_week_copy', week);
+  };
+}
+
+// ---------- Sources ----------
+async function renderSrc() {
+  SOURCES = await api('media_sources?select=*&order=active.desc,name');
+  const row = s => `<tr data-id="${s.id}">
+    <td><b>${esc(s.name)}</b><br><span style="color:var(--mut);font-size:12px">${s.kind === 'rss' ? 'Flux RSS' : 'Google Actualités'} · ${esc(s.lang || 'fr')}</span></td>
+    <td class="q">${esc(s.kind === 'rss' ? s.url : s.query)}</td>
+    <td>${esc((SEC[s.default_section] || '—').split(' / ')[0])}</td>
+    <td>${s.last_status == null ? '<span style="color:var(--mut)">pas encore lu</span>' : (String(s.last_status) === '200' ? '<span class="ok">OK</span>' : '<span class="ko">Erreur ' + esc(s.last_status) + '</span>')}<br><span style="color:var(--mut);font-size:12px">${fdt(s.last_fetch_at)}${s.last_new != null ? ' · ' + s.last_new + ' nouveau(x)' : ''}</span></td>
+    <td><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" class="act" ${s.active ? 'checked' : ''}> active</label></td>
+  </tr>`;
+  $('#main').innerHTML = `
+  <div class="panel"><h3>Ajouter une source</h3>
+    <div class="grid">
+      <label>Nom<input id="sName" placeholder="ex. Radio Oméga"></label>
+      <label>Type<select id="sKind"><option value="google_news">Mots-clés (Google Actualités)</option><option value="rss">Flux RSS (adresse)</option></select></label>
+      <label id="lQ">Mots-clés<input id="sQ" placeholder='ex. "Burkina" Djibo  ou  site:omegabf.info'></label>
+      <label>Langue<select id="sLang"><option value="fr">Français</option><option value="en">Anglais</option></select></label>
+      <label>Rubrique par défaut<select id="sSec">${SECTIONS.map(([c, l]) => `<option value="${c}">${esc(l.split(' / ')[0])}</option>`).join('')}</select></label>
+    </div>
+    <div style="margin-top:12px"><button class="btn pri" id="sAdd">Ajouter</button></div>
+    <p class="help">Mots-clés : tous les articles récents de Google Actualités qui correspondent (« site:exemple.bf » pour suivre un seul journal). Flux RSS : l'adresse du flux du site (souvent <i>…/feed</i> ou <i>…/rss</i>). La nouvelle source est lue à la prochaine heure pleine.</p>
+  </div>
+  <table><thead><tr><th>Source</th><th>Adresse / mots-clés</th><th>Rubrique</th><th>Dernière lecture</th><th></th></tr></thead>
+  <tbody>${SOURCES.map(row).join('')}</tbody></table>`;
+  const kind = $('#sKind');
+  kind.onchange = () => { $('#lQ').firstChild.textContent = kind.value === 'rss' ? 'Adresse du flux' : 'Mots-clés'; $('#sQ').placeholder = kind.value === 'rss' ? 'https://exemple.bf/feed' : '"Burkina" Djibo  ou  site:omegabf.info'; };
+  $('#sAdd').onclick = async () => {
+    const name = $('#sName').value.trim(), q = $('#sQ').value.trim(), k = kind.value;
+    if (!name || !q) return toast('Indiquez un nom et ' + (k === 'rss' ? "l'adresse du flux" : 'des mots-clés'));
+    if (k === 'rss' && !/^https?:\/\//.test(q)) return toast("L'adresse doit commencer par https://");
+    const body = { name, kind: k, lang: $('#sLang').value, default_section: $('#sSec').value, active: true, added_by: AUTH.email };
+    if (k === 'rss') body.url = q; else body.query = q;
+    try { await api('media_sources', { method: 'POST', body: JSON.stringify(body), headers: { Prefer: 'return=minimal' } }); toast('Source ajoutée'); renderSrc(); }
+    catch (e) { toast('Erreur : ' + e.message); }
+  };
+  $('#main').querySelectorAll('.act').forEach(cb => cb.onchange = async () => {
+    const id = +cb.closest('tr').dataset.id;
+    try { await api('media_sources?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ active: cb.checked }), headers: { Prefer: 'return=minimal' } }); toast(cb.checked ? 'Source activée' : 'Source désactivée'); }
+    catch (e) { cb.checked = !cb.checked; toast('Erreur : ' + e.message); }
+  });
+}
+
+// ---------- navigation ----------
+function show(v) {
+  view = v;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  try { localStorage.setItem('mm_view', v); } catch (e) {}
+  if (v === 'tri') renderTri(); else if (v === 'sem') renderSem(); else renderSrc().catch(e => $('#main').innerHTML = `<div class="empty">Erreur : ${esc(e.message)}</div>`);
+}
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => show(b.dataset.v));
+
+(async () => {
+  if (!(await AUTH.ready)) { $('#main').innerHTML = ''; return; }
+  try { await loadArticles(); } catch (e) { $('#main').innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; return; }
+  let v = 'tri'; try { v = localStorage.getItem('mm_view') || 'tri'; } catch (e) {}
+  show(v);
+  AUTH.log && AUTH.log('media_open', null);
+})();
+</script>
+</body>
+</html>
