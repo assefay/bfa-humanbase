@@ -1846,6 +1846,23 @@ window.qaAnswer = async function(question, mode='rapide'){
   return {answer, context, latency_ms:Math.round(performance.now()-t0)};
 };
 window.qaReady = (async()=>{ await geoMapsReady; return true; })();
+// Question préremplie depuis le tableau de bord Direction (…/?q=…) : affichée dans le champ et lancée une fois connecté.
+// Gardée en sessionStorage pour survivre au rechargement de session ou au lien de connexion.
+(function(){
+  let q = new URLSearchParams(location.search).get('q');
+  try { if (q) sessionStorage.setItem('hb_pending_q', q); else q = sessionStorage.getItem('hb_pending_q'); } catch (e) {}
+  if (!q) return;
+  if (location.search) history.replaceState(null, '', location.pathname + location.hash);
+  const el = document.getElementById('qInput'); if (!el) return;
+  el.value = q; window._qval = q;
+  (async () => {
+    if (window.AUTH && AUTH.ready && !(await AUTH.ready)) return;      // pas connecté : la question reste en attente
+    try { sessionStorage.removeItem('hb_pending_q'); } catch (e) {}
+    await (geoMapsReady || Promise.resolve());
+    el.scrollIntoView({ block: 'center' });
+    runQuery();
+  })();
+})();
 </script>
 </body>
 </html>
