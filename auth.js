@@ -164,7 +164,15 @@
       if (s) { apply(s); location.reload(); return false; }      // session renouvelée : recharger avec le jeton
       clear(); showLogin(linkError ? 'Lien invalide ou expiré : ' + linkError : ''); return false;
     }
-    if (!(await isAllowed().catch(() => false))) { showDenied(); return false; }
+    if (!(await isAllowed().catch(() => false))) {
+      // Collègue avec le seul accès « monitoring médias » arrivé sur HumanBase : on l'y envoie
+      if (CHECK === 'is_allowed' && !inIframe) {
+        const r = await fetch(SB + '/rest/v1/rpc/is_media_user', { method: 'POST',
+          headers: { apikey: ANON, Authorization: 'Bearer ' + AUTH.token, 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null);
+        if (r && r.ok && (await r.json()) === true) { location.replace(location.pathname.replace(/[^/]*$/, '') + 'medias/'); return false; }
+      }
+      showDenied(); return false;
+    }
     badge();
     return true;
   })();
