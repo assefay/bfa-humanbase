@@ -34,7 +34,7 @@ h2{font-size:20px;margin:4px 0 4px;font-weight:700}
 h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);margin:22px 0 10px;font-weight:700}
 .grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-.tile .mini{margin:10px 0 0;padding:10px 0 0 16px;border-top:1px dashed var(--line);font-size:13.5px;color:#24323F}.tile .mini li{margin:0 0 6px}.tile .more{font-size:13px;color:var(--blue);font-weight:500}
+.tile .mini{margin:10px 0 0;padding:10px 0 0 16px;border-top:1px dashed var(--line);font-size:13.5px;color:#24323F}.tile .mini li{margin:0 0 6px}.tile .more-btn{margin-top:8px;font-size:13.5px}
 .tile.clickable{cursor:pointer}.tile.clickable:hover{border-color:var(--blue)}.tile.sel{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-100)}
 .card.sev{border-left:5px solid var(--red)}.card.warn{border-left:5px solid #C98A00}.card.ok{border-left:5px solid var(--green)}
 .card h4{margin:0 0 6px;font-size:16px;font-weight:600;line-height:1.35}
@@ -175,9 +175,9 @@ function renderIncidents(partial) {
   const T = [['tous', 'Tous incidents'], ['drone', 'Drones'], ['eei', 'EEI'], ['convoi', 'Attaques contre convois'], ['enlevement', 'Enlèvements'], ['humanitaires', 'Humanitaires ciblés'], ['pillage_betail', 'Pillage / bétail'], ['sante', 'Santé'], ['education', 'Éducation']];
   const acledTag = partial.acled ? `<span class="tag amb" title="ACLED publie ses données avec quelques jours de retard : les événements après cette date ne sont pas encore disponibles">jusqu'au ${fd(m.acled_sync?.max_event)}</span>` : '';
   const tiles = T.map(([k, l]) => { const { O, A } = th(k);
-    return `<div class="card tile${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? ' clickable' : ''}" data-theme="${k}" data-label="${l}"><div class="l">${l}${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? ' <span class="tag blue">détail ▸</span>' : ''}</div><div class="v">${n0(O.n || 0)} <small>OCHA</small> &nbsp; ${n0(A.n || 0)} <small>ACLED${acledTag}</small></div>
+    return `<div class="card tile${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? ' clickable' : ''}" data-theme="${k}" data-label="${l}"><div class="l">${l}${k !== 'tous' && ((O.n || 0) + (A.n || 0)) ? '' : ''}</div><div class="v">${n0(O.n || 0)} <small>OCHA</small> &nbsp; ${n0(A.n || 0)} <small>ACLED${acledTag}</small></div>
       <div class="c">${(O.morts || A.morts) ? `${n0((O.morts || 0))} / ${n0(A.morts || 0)} morts · ` : ''}période précédente : ${n0(O.n_prev || 0)} / ${partial.acled ? '—' : n0(A.n_prev || 0)}</div>
-      ${k === 'tous' ? '' : (() => { const it = (I.theme_items || []).filter(x => (x.th || []).includes(k)); return it.length ? `<ul class="mini">${it.slice(0, 3).map(e => `<li><b>${fd(e.d)}</b> ${esc(e.loc || e.com || e.reg)} (${esc(e.reg)}) — ${esc((e.texte || '').slice(0, 110))}${(e.texte || '').length > 110 ? '…' : ''} <span class="src" style="display:inline;margin:0">${e.src === 'ACLED' ? 'ACLED' : 'OCHA'}</span></li>`).join('')}</ul>${it.length > 3 ? `<div class="more">+ ${it.length - 3} autre(s) — cliquer pour tout voir</div>` : ''}` : ''; })()}</div>`; }).join('');
+      ${k === 'tous' ? '' : (() => { const it = (I.theme_items || []).filter(x => (x.th || []).includes(k)); return it.length ? `<ul class="mini">${it.slice(0, 3).map(e => `<li><b>${fd(e.d)}</b> ${esc(e.loc || e.com || e.reg)} (${esc(e.reg)}) — ${esc((e.texte || '').slice(0, 110))}${(e.texte || '').length > 110 ? '…' : ''} <span class="src" style="display:inline;margin:0">${e.src === 'ACLED' ? 'ACLED' : 'OCHA'}</span></li>`).join('')}</ul><button class="btn more-btn" data-theme="${k}" data-label="${l}">Voir ${it.length > 1 ? 'les ' + it.length + ' incidents' : "l'incident"} en détail ▸</button>` : ''; })()}</div>`; }).join('');
   const maj = (I.majeurs || []).map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc)} (${esc(e.com || e.prov)}, ${esc(e.reg)}) : ${esc(e.type)}${e.morts ? ', ' + e.morts + ' mort(s)' : ''}</b>${(e.th || []).map(x => `<span class="tag red">${esc(x)}</span>`).join('')}<div class="m">${esc(e.a1)}${e.a2 ? ' → ' + esc(e.a2) : ''}${e.civ ? ' · ' + esc(e.civ) : ''}</div><p>${esc(e.notes)}</p></div>`).join('');
   const ocha = (I.ocha_list || []).map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc || e.com || e.reg)} (${esc(e.reg)}) : ${esc(e.type)}${e.tues ? ', ' + e.tues + ' civil(s) tué(s)' : ''}${e.dep ? ', ' + n0(e.dep) + ' déplacés' : ''}</b><p>${esc(e.desc || '')}${e.hum ? ' <i>' + esc(e.hum) + '</i>' : ''}</p></div>`).join('');
   const mo = I.mensuel || []; const mO = mo.filter(x => x.src === 'OCHA'), mA = mo.filter(x => x.src === 'ACLED');
@@ -193,12 +193,6 @@ function renderIncidents(partial) {
     <div class="grid g2" style="margin-top:12px"><div class="card tile"><div class="l">Incidents terrain OCHA par mois (${new Date(m.to).getFullYear()})</div>${bars(mO, 'n', 'incidents', 0, mO.length - 1)}<span class="src">dernier mois en cours, incomplet</span></div>
       <div class="card tile"><div class="l">Morts ACLED par mois (${new Date(m.to).getFullYear()})</div>${bars(mA, 'morts', 'morts', 0, mA.length - 1)}<span class="src">dernier mois en cours, incomplet</span></div></div>
     <div class="acts">${ask('Attaques de drones depuis septembre 2026')}${ask('Incidents contre les convois humanitaires en 2026')}${ask('Situation sécuritaire dans le Liptako')}</div>`;
-  document.querySelectorAll('#tab-incidents .tile.clickable').forEach(el => el.onclick = () => {
-    const k = el.dataset.theme, items = (I.theme_items || []).filter(x => (x.th || []).includes(k));
-    document.querySelectorAll('#tab-incidents .tile.clickable').forEach(x => x.classList.toggle('sel', x === el));
-    $('#themeDetail').innerHTML = `<h3 class="sec">${esc(el.dataset.label)} — ${items.length} incident(s) sur la période</h3><div class="card">${items.map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc || e.com || e.prov || e.reg)} (${esc(e.reg)}) : ${esc(e.type || '')}${e.morts ? ', ' + e.morts + ' mort(s)' : ''}</b> <span class="tag ${e.src === 'ACLED' ? '' : 'blue'}">${e.src === 'ACLED' ? 'ACLED' : 'terrain OCHA'}</span><p>${esc(e.texte)}</p></div>`).join('') || '<p class="flat">Aucun.</p>'}<div class="acts">${ask(el.dataset.label + ' : détails et contexte sur la période du ' + fd(D.meta.from) + ' au ' + fd(D.meta.to))}</div></div>`;
-    $('#themeDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
 }
 
 // ---------- 3. DÉPLACEMENTS ----------
@@ -293,6 +287,15 @@ function renderMedias() {
   else body = `<p class="sub">L'équipe PI n'a pas encore validé d'articles. En attendant, les histoires jugées les plus importantes par le tri automatique :</p><div class="card"><ul class="media" style="margin:0;padding-left:18px">${(M.proposes || []).map(li).join('') || '<li class="flat">rien à afficher</li>'}</ul><span class="src">tri automatique, en attente de validation PI</span></div>`;
   $('#tab-medias').innerHTML = `<h2>Ce que dit la presse</h2>${body}<div class="acts"><a class="btn" href="../medias/" target="_blank" rel="noopener">Ouvrir le monitoring médias ↗</a>${ask('Que dit la presse sur les convois ?')}</div>`;
 }
+
+// Détail d'un thème : bouton dans la tuile ou clic sur la tuile (délégué, survit aux rechargements)
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('#tab-incidents .more-btn, #tab-incidents .tile.clickable'); if (!el || ev.target.closest('a')) return;
+  const k = el.dataset.theme, label = el.dataset.label, items = (D.incidents.theme_items || []).filter(x => (x.th || []).includes(k));
+  document.querySelectorAll('#tab-incidents .tile').forEach(x => x.classList.toggle('sel', x.dataset.theme === k));
+  $('#themeDetail').innerHTML = `<h3 class="sec">${esc(label)} — ${items.length} incident(s) du ${fd(D.meta.from)} au ${fd(D.meta.to)}</h3><div class="card">${items.map(e => `<div class="ev"><b>${fd(e.d)} — ${esc(e.loc || e.com || e.prov || e.reg)} (${esc(e.reg)}) : ${esc(e.type || '')}${e.morts ? ', ' + e.morts + ' mort(s)' : ''}</b> <span class="tag ${e.src === 'ACLED' ? '' : 'blue'}">${e.src === 'ACLED' ? 'ACLED' : 'terrain OCHA'}</span><p>${esc(e.texte)}</p></div>`).join('') || '<p class="flat">Aucun.</p>'}<div class="acts">${ask(label + ' du ' + fd(D.meta.from) + ' au ' + fd(D.meta.to) + ' : détails et contexte')}</div></div>`;
+  $('#themeDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 // ---------- navigation & période ----------
 const links = [...document.querySelectorAll('#tabs a:not(.ask)')];
